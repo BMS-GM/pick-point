@@ -10,14 +10,11 @@ Driver to connect to Spinnaker compatible cameras
 __author__ = 'Blue Marble Security Enterprise'
 __version__ = '1.0'
 
-
 import sys
 import datetime
 import PySpin
-
 import numpy as np
 import cv2
-
 import logging
 
 from CameraDriver import CameraDriver
@@ -147,12 +144,12 @@ if __name__ == '__main__':
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
     # =====================================================================
-
+    
+    # Get a list of all cameras on the system
     system = PySpin.System.GetInstance()
     cam_list = system.GetCameras()
     logger.debug("number of cameras {}".format(cam_list.GetSize()))
-
-    # Get a list of all cameras on the system
+    
     if cam_list.GetSize() == 0:
         logger.error("no cameras found, aborting")
         system.ReleaseInstance()
