@@ -23,7 +23,7 @@ import logging
 from CameraDriver import CameraDriver
 
 
-class SpinCameraDriver(CameraDriver):
+class SpinCameraDriver(CameraDriver.CameraDriver):
     def __init__(self, camera):
         """
         SpinCameraDriver Constructor
@@ -146,13 +146,13 @@ if __name__ == '__main__':
     # Add outputs to main logger
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
-    system = PySpin.System.GetInstance()
-    cam_list = system.GetCameras()
     # =====================================================================
 
+    system = PySpin.System.GetInstance()
+    cam_list = system.GetCameras()
     logger.debug("number of cameras {}".format(cam_list.GetSize()))
 
-    # Get a lost of all cameras on the system
+    # Get a list of all cameras on the system
     if cam_list.GetSize() == 0:
         logger.error("no cameras found, aborting")
         system.ReleaseInstance()
