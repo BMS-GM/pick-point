@@ -29,9 +29,13 @@ class SpinCameraDriver(CameraDriver.CameraDriver):
         SpinCameraDriver Constructor
         :param camera: The Spinnaker compatible camera this diver will connect to
         """
+
+        self._camera = camera
+
         # init the logger
-        self._logger = logging.getLogger('GM_Pick_Point.' + self.__class__.__name__ + '.Camera:' + str(camera.GetUniqueID()))
-        self._logger.debug('Initializing Camera %s ...' % str(camera.GetUniqueID()))
+        self._id = self._camera.TLDevice.DeviceSerialNumber.ToString()
+        self._logger = logging.getLogger('GM_Pick_Point.' + self.__class__.__name__ + '.Camera:' + self._id)
+        self._logger.debug('Initializing Camera %s ...' % self._id)
 
         # Setup camera to take pictures based on a software trigger
         self._camera = camera
@@ -79,7 +83,7 @@ class SpinCameraDriver(CameraDriver.CameraDriver):
             # Check if the image was correctly received
             if img.IsIncomplete():
                 self._logger.warning('Camera %s Image %d Is Incomplete - Skipping'
-                                     % (str(self._camera.GetUniqueID(), img_num)))
+                                     % (str(self._camera.GetUniqueID()), img_num))
                 pass
             else:
                 self._logger.debug('Image %d Obtained' % img_num)
@@ -105,12 +109,43 @@ class SpinCameraDriver(CameraDriver.CameraDriver):
         self._logger.debug('Image Acquisition Compete')
         return result
 
+    def get_info(self):
+        result = [True,  # All Info Acquired
+                  None,  # Serial Number
+                  None,  # Vendor Name
+                  None   # Device Display Name
+                  ]
+        try:
+
+            # Print device serial number
+            if self._camera.TLDevice.DeviceSerialNumber.GetAccessMode() == PySpin.RO:
+                result[1] = self._camera.TLDevice.DeviceSerialNumber.ToString()
+            else:
+                result[0] = False
+
+            # Print device vendor
+            if PySpin.IsReadable(self._camera.TLDevice.DeviceVendorName):
+                result[2] = self._camera.TLDevice.DeviceVendorName.ToString()
+            else:
+                result[0] = False
+
+            # Print device display name
+            if PySpin.IsReadable(self._camera.TLDevice.DeviceDisplayName):
+                result[3] = self._camera.TLDevice.DeviceDisplayName.ToString()
+            else:
+                result[0] = False
+
+        except PySpin.SpinnakerException as ex:
+            result[0] = False
+
+        return result
+
     def __del__(self):
         """
         SpinCameraDriver Deconstructor
         :return: N/A
         """
-        self._logger.debug('Deleting Camera %s ...' % str(self._camera.GetUniqueID()))
+        self._logger.debug('Deleting Camera')
 
         # Clean up camera references
         self._reset_trigger_mode_software()
