@@ -1,0 +1,10 @@
+# ignore all logs
+*.log
+
+# ignore image captures
+images/capture/mono_captures/
+images/capture/stereo_captures/
+images/capture/*.png
+
+# ignore the Img Label Program
+ImgLabel/
