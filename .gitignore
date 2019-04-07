@@ -8,3 +8,6 @@ images/capture/*.png
 
 # ignore the Img Label Program
 ImgLabel/
+
+# ignore neural networks
+NeuralNetwork/faster_rcnn_resnet101_coco
