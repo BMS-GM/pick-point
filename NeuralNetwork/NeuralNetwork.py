@@ -15,7 +15,8 @@ import tensorflow as tf
 import logging
 import datetime
 import cv2
-
+import numpy as np
+import copy
 
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 LABEL_MAP = dict(bird_eye=1, bird_mouth=2, bird_wing=3, bird_body=4, bird_seeds=5, cat_eyes=6, cat_mouth=7, cat_body=8,
@@ -101,6 +102,7 @@ class Network:
         :return: the TF result matrix
         """
         self._logger.info('Processing Image...')
+        img = np.array(img)
         inp = cv2.resize(img, (300, 300))
         inp = inp[:, :, [2, 1, 0]]  # BGR2RGB
 
@@ -128,7 +130,7 @@ class Network:
         """
         rows = img.shape[0]
         cols = img.shape[1]
-        result_img = img.copy()
+        result_img = copy.deepcopy(img)
         num_detections = int(network_output[0][0])
         display_all = label == "ALL"
         num_labels = 0
