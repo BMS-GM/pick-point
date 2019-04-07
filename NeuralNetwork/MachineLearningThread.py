@@ -21,6 +21,23 @@ GRAPHS = dict(FASTER_RCNN_RESNET='C:\\Users\\jmjerred-adm\\PycharmProjects\\pick
                                'ssd_inception_v2_coco\\frozen_inference_graph.pb')
 
 
+def visualize_result(img, network_output, label="ALL", max_labels=float('inf'),
+                     display_class_name=True, display_score=True):
+    """
+    Call visualization function from the network class
+    :param img: image to draw on
+    :param network_output: the TF result matrix
+    :param label: The class to label (by default all classes are labeled)
+    :param max_labels: The maximum number of labels to display (by default it is infinity)
+    :param display_class_name: If true then the class name is also displayed on the resulting image
+    :param display_score: : If true then the score is also displayed on the resulting image
+    :return: labeled image
+    """
+    result = neuralNet.Network.visualize_output(img, network_output, label=label, max_labels=max_labels,
+                                                display_class_name=display_class_name, display_score=display_score)
+    return result
+
+
 class MachineLearningThread(threading.Thread):
 
     def __init__(self, log_dir, graph_type="FASTER_RCNN_RESNET"):
@@ -82,24 +99,6 @@ class MachineLearningThread(threading.Thread):
             self._result_is_ready_event.wait()      # Wait for image to be processed
             result = self._output_matrix.copy()     # Deep copy of result
 
-        return result
-
-    def visualize_result(self, img, network_output, label="ALL", max_labels=float('inf'),
-                         display_class_name=True, display_score=True):
-        """
-        Call visualization function from the network class
-        :param img: image to draw on
-        :param network_output: the TF result matrix
-        :param label: The class to label (by default all classes are labeled)
-        :param max_labels: The maximum number of labels to display (by default it is infinity)
-        :param display_class_name: If true then the class name is also displayed on the resulting image
-        :param display_score: : If true then the score is also displayed on the resulting image
-        :return: labeled image
-        """
-        self._logger.info("Starting Visualization")
-        result = neuralNet.Network.visualize_output(img, network_output, label=label, max_labels=max_labels,
-                                                    display_class_name=display_class_name, display_score=display_score)
-        self._logger.info("Visualization - COMPLETE")
         return result
 
     def terminate_thread(self):
