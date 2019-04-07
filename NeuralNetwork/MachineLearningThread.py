@@ -13,7 +13,9 @@ __version__ = '1.0'
 import threading
 import logging
 import datetime
-import NeuralNetwork.NeuralNetwork as neuralNet
+import copy
+
+from NeuralNetwork import NeuralNetwork as neuralNet
 
 GRAPHS = dict(FASTER_RCNN_RESNET='C:\\Users\\jmjerred-adm\\PycharmProjects\\pick-point\\NeuralNetwork\\'
                                  'faster_rcnn_resnet101_coco\\frozen_inference_graph.pb',
@@ -92,12 +94,12 @@ class MachineLearningThread(threading.Thread):
         :param image: image to be processed
         :return: TF result Matrix
         """
-        with self._request_lock:                    # Acquire Lock
-            self._input_image = image.copy()        # Deep copy of data
-            self._result_is_ready_event.clear()     # Set result as not ready
-            self._request_processing_event.set()    # Notify thread of pending job
-            self._result_is_ready_event.wait()      # Wait for image to be processed
-            result = self._output_matrix.copy()     # Deep copy of result
+        with self._request_lock:                            # Acquire Lock
+            self._input_image = copy.deepcopy(image)        # Deep copy of data
+            self._result_is_ready_event.clear()             # Set result as not ready
+            self._request_processing_event.set()            # Notify thread of pending job
+            self._result_is_ready_event.wait()              # Wait for image to be processed
+            result = copy.deepcopy(self._output_matrix)     # Deep copy of result
 
         return result
 

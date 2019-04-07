@@ -2,6 +2,7 @@ import sys
 import logging
 import threading
 import PySpin
+import copy
 
 from CameraDriver.StereoCameraThread import StereoCameraThread
 from CameraDriver.SpinCameraDriver import SpinCameraDriver
@@ -30,6 +31,13 @@ class SpinStereoCameraDriver(StereoCameraThread):
         del self._right_driver
         self._system.ReleaseInstance()
         del self._system
+
+    def terminate_thread(self):
+        """
+        Request Thread Termination
+        """
+        self._logger.info("Terminating Thread...")
+        self._terminate_thread.set()
 
     def _init_cameras(self, left_camera_id, right_camera_id):
         self._logger.info("Initializing Drivers...")
@@ -113,28 +121,39 @@ class SpinStereoCameraDriver(StereoCameraThread):
         self._logger.info("Releasing Unused Cameras - COMPLETE")
 
     def run(self):
-        pass
+        self._logger.debug('Thread Started')
+        self._main_loop()
+        self._logger.debug('Thread Terminated')
 
     def _main_loop(self):
+        self._logger.debug('Entering Main Loop')
         while not self._terminate_thread.is_set():
             images_pending = self._request_images_event.wait(0.5)
             if images_pending:
+                self._logger.debug('Processing Request...')
+                self._request_images_event.clear()
                 self._request[0](*self._request[1])
+                self._logger.debug('Processing Request - COMPLETE')
+                self._images_acquired_event.set()
 
-    def get_stereo_images(self, num_images, result):
+    def get_stereo_images(self, num_images):
+        self._logger.debug('Requesting %d new stereo images' % num_images)
         with self._lock:
-            self._request = (self._get_stereo_images, num_images)
+            self._request = (self._get_stereo_images, (num_images,))
             self._images_acquired_event.clear()
             self._request_images_event.set()
             self._images_acquired_event.wait()
-            result = self._acquired_images.copy()
+            result = copy.deepcopy(self._acquired_images)
+        return result
 
-    def get_mono_images(self, num_images, result, camera_to_use='RANDOM'):
+    def get_mono_images(self, num_images, camera_to_use='RANDOM'):
+        self._logger.debug('Requesting %d new mono images from %s camera' % (num_images, camera_to_use))
         with self._lock:
             self._request = (self._get_mono_images, (num_images, camera_to_use))
             self._request_images_event.set()
             self._images_acquired_event.wait()
-            result = self._acquired_images.copy()
+            result =  copy.deepcopy(self._acquired_images)
+        return result
 
     def _get_stereo_images(self, num_images):
         self._logger.info("Acquiring %d stereo image pairs..." % num_images)
@@ -157,29 +176,5 @@ class SpinStereoCameraDriver(StereoCameraThread):
             images_left -= 1
 
         self._logger.info("Acquiring %d stereo image pairs - COMPLETE" % num_images)
-        return result
-
-    def _get_mono_images(self, num_images, camera_to_use):
-        self._logger.info("Acquiring %d stereo image pairs..." % num_images)
-        result = []
-        images_left = num_images
-        while images_left > 0:
-            # get left image
-            try:
-                left_image = self._left_driver.get_image(1)[0]
-            except IndexError:
-                continue
-
-            # get right image
-            try:
-                right_image = self._right_driver.get_image(1)[0]
-            except IndexError:
-                continue
-
-            result.append((left_image, right_image))
-            images_left -= 1
-
-        self._logger.info("Acquiring %d stereo image pairs - COMPLETE" % num_images)
-        return result
-
+        self._acquired_images = result
 
