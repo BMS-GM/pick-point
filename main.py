@@ -7,6 +7,7 @@ import queue
 
 from CameraDriver.SpinStereoCameraDriver import SpinStereoCameraDriver
 from NeuralNetwork import MachineLearningThread
+from SQL_Driver import ObjectDB
 
 LOG_DIR = '/logs'
 LEFT_CAMERA_SERIAL_NUM = '18585124'
@@ -43,10 +44,12 @@ class Main:
         logger.addHandler(console_handler)
         # =====================================================================
 
+        self._sql_db = ObjectDB.ObjectDB()
+
         # Setup Multi-threading
         self._camera_thread = SpinStereoCameraDriver(LEFT_CAMERA_SERIAL_NUM, RIGHT_CAMERA_SERIAL_NUM)
         self._machine_learning_thread = MachineLearningThread.MachineLearningThread(LOG_DIR, graph_type=GRAPH_TYPE)
-        self._sql_thread = None         # TODO
+        self._sql_thread = None
         self._depth_map_thread = None
 
         self._camera_thread_complete = threading.Event()
@@ -67,10 +70,22 @@ class Main:
     def main_loop(self):
         self._machine_learning_thread.start()
         self._camera_thread.start()
-        # self._sql_thread.start() TODO
+        self._sql_thread.start()
 
         while True:
-            self._process_next_images()
+
+            process_images_task_thread = threading.Thread(target=self._process_next_images())
+            sql_task_thread = threading.Thread(target=self._call_sql_thread())
+            try:
+                process_images_task_thread.start()
+                sql_task_thread.start()
+            except Exception as e:
+                process_images_task_thread.join()
+                sql_task_thread.join()
+                raise Exception(e)
+            else:
+                process_images_task_thread.join()
+                sql_task_thread.join()
 
     def get_camera_images(self):
         self._camera_thread_complete.wait()
@@ -117,10 +132,13 @@ class Main:
         return result
 
     def _call_sql_thread(self):
-        # TODO: Need to fix
         self._sql_thread_complete.clear()
         with self._sql_result_lock:
-            self._sql_result = None
+            next_incomplete_job = self._sql_db.get_incomplete_job()
+            if next_incomplete_job is None:
+                raise ValueError("Database is empty")
+
+            self._sql_result = self._sql_db.get_object_list(next_incomplete_job[1])
             self._sql_thread_complete.set()
 
     def _process_next_images(self):
