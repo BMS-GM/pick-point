@@ -35,7 +35,7 @@ class ObjectDB(SQLiteDriver.SQLiteDriver):
         """
         conn = None
         try:
-            conn = sqlite3.connect("pickpoint.db")
+            conn = sqlite3.connect("C:\\Users\\jmjerred-adm\\PycharmProjects\\pick-point\\SQL_Driver\\pickpoint.db")
             self._logger.info("Connection to database created")
             return conn
         except sqlite3.Error:
@@ -55,7 +55,7 @@ class ObjectDB(SQLiteDriver.SQLiteDriver):
                 rows = cur.fetchall()
                 self._logger.info(len(rows), "rows fetched from jobs table")
             except sqlite3.Error as e:
-                self._logger.info("get_job_list:", e)
+                self._logger.info("get_job_list: %s" % e)
                 return None
 
         return rows
@@ -75,8 +75,9 @@ class ObjectDB(SQLiteDriver.SQLiteDriver):
                     self._logger.info("get_incomplete_job: No incomplete jobs remaining")
                 else:
                     self._logger.info("get_incomplete_job: Incomplete job fetched")
-            except sqlite3.Error as e:
-                self._logger("get_incomplete_job", e)
+            except sqlite3.Error:
+                self._logger.error('Unhandled Error:\n'
+                                   '%s' % str(traceback.format_exc()))
 
         return job
 
@@ -92,9 +93,10 @@ class ObjectDB(SQLiteDriver.SQLiteDriver):
             cur.execute("SELECT * FROM {0}".format(table))
             result = cur.fetchall()
 
-            self._logger.info("get_object_list:", len(result), "rows fetched")
-        except sqlite3.Error as e:
-            self._logger.error(e)
+            self._logger.info("get_object_list: %s rows fetched" % len(result))
+        except sqlite3.Error:
+            self._logger.error('Unhandled Error:\n'
+                               '%s' % str(traceback.format_exc()))
 
         return result
 
@@ -110,8 +112,10 @@ class ObjectDB(SQLiteDriver.SQLiteDriver):
                 cur = self.connection.cursor()
                 cur.execute("UPDATE jobs SET status = '{0}' WHERE name = '{1}'".format(status, job))
                 self.connection.commit()
-            except sqlite3.Error as e:
-                print(e, "update_job_status")
+                self._logger.info("update_job_status: %s updated" % job)
+            except sqlite3.Error:
+                self._logger.error('Unhandled Error:\n'
+                                   '%s' % str(traceback.format_exc()))
 
     def reset_job_statuses(self):
         """
@@ -123,8 +127,10 @@ class ObjectDB(SQLiteDriver.SQLiteDriver):
                 cur = self.connection.cursor()
                 cur.execute("UPDATE jobs SET status = 'Incomplete'")
                 self.connection.commit()
-            except sqlite3.Error as e:
-                print(e)
+                self._logger.info("reset_job_statuses: statuses in jobs table updated")
+            except sqlite3.Error:
+                self._logger.error('Unhandled Error:\n'
+                                   '%s' % str(traceback.format_exc()))
 
     def is_connected(self):
         """
@@ -132,14 +138,17 @@ class ObjectDB(SQLiteDriver.SQLiteDriver):
         :return: boolean
         """
         if self.connection is None:
+            self._logger.info("is_connected: sql connection down")
             return False
         else:
+            self._logger.info("is_connected: sql connection connected")
             return True
 
     def disconnect(self):
         """ disconnect from database
         :return: N/A
         """
+        self._logger.info("disconnect: camera disconnected")
         self.connection.close()
         self.connection = None
 
