@@ -14,7 +14,7 @@ from SQL_Driver import ObjectDB
 LOG_DIR = 'Logs'
 LEFT_CAMERA_SERIAL_NUM = '18585124'
 RIGHT_CAMERA_SERIAL_NUM = '18585121'
-GRAPH_TYPE = 'SSD_INCEPTION_V2'
+GRAPH_TYPE = 'FASTER_RCNN_RESNET'
 
 
 class Main:
@@ -169,6 +169,7 @@ class Main:
         self._sql_thread_complete.clear()
         with self._sql_result_lock:
             next_incomplete_job = self._sql_db.get_incomplete_job()
+            self._logger.debug("next job: %s"  % str(next_incomplete_job[1]))
             if next_incomplete_job is None:
                 raise ValueError("Database is empty")
 
