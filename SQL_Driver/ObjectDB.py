@@ -13,6 +13,7 @@ __version__ = '1.0'
 
 import sqlite3
 import threading
+import logging
 from SQL_Driver import SQLiteDriver
 
 
@@ -22,11 +23,11 @@ class ObjectDBThread(SQLiteDriver.SQLiteDriver, threading.Thread):
         ObjectDB Constructor
         """
         super(ObjectDBThread, self).__init__()
+        self._logger = logging.getLogger('GM_Pick_Point.' + self.__class__.__name__)
         self.connection = self.create_connection()
         self._status_lock = threading.Lock()
 
-    @staticmethod
-    def create_connection():
+    def create_connection(self):
         """ create a database connection to the SQLite database
             specified by the db_file
         :return: connection
@@ -34,9 +35,10 @@ class ObjectDBThread(SQLiteDriver.SQLiteDriver, threading.Thread):
         conn = None
         try:
             conn = sqlite3.connect("pickpoint.db")
+            self._logger.info("Connection to database created")
             return conn
         except sqlite3.Error as e:
-            print(e)
+            self._logger.error(e)
         return conn
 
     def get_job_list(self):
@@ -48,8 +50,9 @@ class ObjectDBThread(SQLiteDriver.SQLiteDriver, threading.Thread):
             cur = self.connection.cursor()
             cur.execute("SELECT * FROM jobs")
             rows = cur.fetchall()
+            self._logger.info(len(rows), "rows fetched from jobs table")
         except sqlite3.Error as e:
-            print(e)
+            self._logger.info("get_job_list:", e)
             return None
 
         return rows
@@ -60,12 +63,16 @@ class ObjectDBThread(SQLiteDriver.SQLiteDriver, threading.Thread):
         :return: an incomplete job
         """
         try:
+            job = None
             cur = self.connection.cursor()
             cur.execute("SELECT * FROM jobs WHERE status == 'Incomplete'")
             job = cur.fetchone()
+            if job is None:
+                self._logger.info("get_incomplete_job: No incomplete jobs remaining")
+            else:
+                self._logger.info("get_incomplete_job: Incomplete job fetched")
         except sqlite3.Error as e:
-            print(e)
-            return None
+            self._logger("get_incomplete_job", e)
 
         return job
 
@@ -75,17 +82,18 @@ class ObjectDBThread(SQLiteDriver.SQLiteDriver, threading.Thread):
         :param table: name of job
         :return: a list of jobs and statuses for each job
         """
+        result = None
         with self._status_lock:
             try:
                 cur = self.connection.cursor()
                 cur.execute("SELECT * FROM {0}".format(table))
+                result = cur.fetchall()
 
-                rows = cur.fetchall()
+                self._logger.info("get_object_list:", len(result), "rows fetched")
             except sqlite3.Error as e:
-                print(e)
-                return None
+                self._logger.error(e)
 
-        return rows
+        return result
 
     def update_job_status(self, job, status):
         """
