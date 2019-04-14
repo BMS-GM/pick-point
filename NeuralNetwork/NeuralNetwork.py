@@ -18,9 +18,13 @@ import cv2
 import numpy as np
 import copy
 
+from Item import Item
+
 FONT = cv2.FONT_HERSHEY_SIMPLEX
-LABEL_MAP = dict(bird_eye=1, bird_mouth=2, bird_wing=3, bird_body=4, bird_seeds=5, cat_eyes=6, cat_mouth=7, cat_body=8,
-                 cat_ear=9, cat_food=10, dog_ear=11, dog_eyes=12, dog_mouth=13, dog_body=14, dog_tail=15, dog_food=16)
+LABEL_MAP_BY_NAME = dict(bird_eye=1, bird_mouth=2, bird_wing=3, bird_body=4, bird_seeds=5, cat_eyes=6, cat_mouth=7,
+                         cat_body=8, cat_ear=9, cat_food=10, dog_ear=11, dog_eyes=12, dog_mouth=13, dog_body=14,
+                         dog_tail=15, dog_food=16)
+LABEL_MAP_BY_ID = dict((value, key) for key, value in LABEL_MAP_BY_NAME.items())
 MIN_SCORE = 0.5
 
 
@@ -116,6 +120,44 @@ class Network:
         return out
 
     @staticmethod
+    def get_num_objects_detected(network_output):
+        """
+        Get a dict containing the number of each type of object detected
+        :param network_output: The output of the NN
+        :return: A dict
+        """
+        result = dict()
+        for key in LABEL_MAP_BY_NAME.keys():
+            result[key] = 0
+
+        num_detections = int(network_output[0][0])
+        for i in range(num_detections):
+            class_id = int(network_output[3][0][i])
+            score = float(network_output[1][0][i])
+            if score >= MIN_SCORE:
+                class_name = LABEL_MAP_BY_ID[class_id]
+                result[class_name] += 1
+        return result
+
+    @staticmethod
+    def get_item_locations(network_output):
+        result = []
+        num_detections = int(network_output[0][0])
+
+        for i in range(num_detections):
+            class_id = int(network_output[3][0][i])
+            score = float(network_output[1][0][i])
+            bbox = [float(v) for v in network_output[2][0][i]]
+
+            if score >= MIN_SCORE:
+                class_name = LABEL_MAP_BY_ID[class_id]
+
+                x = (bbox[1] + bbox[3]) / 2.0
+                y = (bbox[0] + bbox[2]) / 2.0
+                result.append(Item(class_name, x=x, y=y))
+        return result
+
+    @staticmethod
     def visualize_output(img, network_output, label="ALL", max_labels=float('inf'),
                          display_class_name=True, display_score=True):
         """
@@ -138,7 +180,7 @@ class Network:
             class_id = int(network_output[3][0][i])
             score = float(network_output[1][0][i])
             bbox = [float(v) for v in network_output[2][0][i]]
-            if score >= MIN_SCORE and (display_all or LABEL_MAP[class_id] == label):
+            if score >= MIN_SCORE and (display_all or LABEL_MAP_BY_ID[class_id] == label):
                 x = bbox[1] * cols
                 y = bbox[0] * rows
                 right = bbox[3] * cols
@@ -146,7 +188,7 @@ class Network:
                 cv2.rectangle(result_img, (int(x), int(y)), (int(right), int(bottom)), (125, 255, 51), thickness=2)
 
                 if display_class_name:
-                    class_name = list(LABEL_MAP.keys())[list(LABEL_MAP.values()).index(class_id)]
+                    class_name = LABEL_MAP_BY_ID[class_id]
                 else:
                     class_name = ""
 
