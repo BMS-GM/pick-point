@@ -7,14 +7,32 @@ import traceback
 import copy
 import time
 
-from CameraDriver.SpinStereoCameraDriver import SpinStereoCameraDriver
-from NeuralNetwork import MachineLearningThread
 from SQL_Driver import ObjectDB
+from Item import Item
+from VisionThread import VisionThread
+from GUI import GUI
 
+LOG_LEVEL_CMD = logging.DEBUG
 LOG_DIR = 'Logs'
 LEFT_CAMERA_SERIAL_NUM = '18585124'
 RIGHT_CAMERA_SERIAL_NUM = '18585121'
-GRAPH_TYPE = 'FASTER_RCNN_RESNET'
+# GRAPH_TYPE = 'FASTER_RCNN_RESNET'
+GRAPH_TYPE = 'SSD_INCEPTION_V2'
+
+GUI_MESSAGES = dict(
+                    # GENERAL MESSAGES
+                    UNEXPECTED_ERROR=0,
+                    KNOWN_ERROR=1,
+
+                    # SQL JOB MESSAGES
+                    OBJECT_NOT_MOVED=10,
+                    WRONG_OBJECT_REMOVED=11,
+                    WRONG_NUMBER_MOVED=12,
+                    OBJECT_NOT_FOUND=13,
+                    CORRECT_OBJECT_MOVED=14,
+                    CURRENT_REQUESTED_OBJECT=15,
+                    JOB_QUEUE_EMPTY=16
+                    )
 
 
 class Main:
@@ -34,7 +52,7 @@ class Main:
 
         # create console logger
         console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.DEBUG)
+        console_handler.setLevel(LOG_LEVEL_CMD)
 
         # Format Log
         log_formatter = logging.Formatter('%(levelname)s - %(asctime)s - %(name)s - %(message)s')
@@ -46,124 +64,139 @@ class Main:
         self._logger.addHandler(console_handler)
         # =====================================================================
 
-        self._sql_db = ObjectDB.ObjectDB()
-
         # Setup Multi-threading
-        self._logger.debug('Initializing Camera Thread')
-        self._camera_thread = SpinStereoCameraDriver(LEFT_CAMERA_SERIAL_NUM, RIGHT_CAMERA_SERIAL_NUM)
-        self._logger.debug('Initializing Machine Learning Thread')
-        self._machine_learning_thread = MachineLearningThread.MachineLearningThread(LOG_DIR, graph_type=GRAPH_TYPE)
+        self._logger.debug('Initializing GUI Thread')
+        self._gui_thread = GUI()
+
         self._logger.debug('Initializing SQL Thread')
         self._sql_thread = None
-        self._logger.debug('Initializing Depth Map Thread')
-        self._depth_map_thread = None
-        self._logger.debug('Threads Initialized')
-
-        self._camera_thread_complete = threading.Event()
-        self._machine_learning_thread_complete = threading.Event()
         self._sql_thread_complete = threading.Event()
-        self._depth_map_thread_complete = threading.Event()
+        self._processing_job = threading.Event()
+        self._requested_item = None
+        self._sql_result = []
+        self._sql_result_lock = threading.Lock()
+        self._sql_db = ObjectDB.ObjectDB()
+
+        self._logger.debug('Initializing Vision Thread')
+        self._vision_thread = VisionThread(LEFT_CAMERA_SERIAL_NUM, RIGHT_CAMERA_SERIAL_NUM, GRAPH_TYPE, LOG_DIR)
 
         self._camera_result = None
-        self._machine_learning_result = None
-        self._sql_result = None
-        self._depth_map_result = None
-
         self._camera_result_lock = threading.Lock()
-        self._machine_learning_result_lock = threading.Lock()
-        self._sql_result_lock = threading.Lock()
-        self._depth_map_result_lock = threading.Lock()
+
+        self._last_item_list = []
+        self._last_item_list_lock = threading.Lock()
+        self._current_item_list = []
+        self._current_item_list_lock = threading.Lock()
+
+        self._termination_requested_event = threading.Event()
+
+        self._logger.debug('Threads Initialized')
 
     def main_loop(self):
         try:
-            self._logger.debug('Starting Machine Learning Thread')
-            self._machine_learning_thread.start()
-            self._logger.debug('Starting Camera Thread')
-            self._camera_thread.start()
+            self._logger.debug('Starting Vision Thread')
+            self._vision_thread.start()
 
-            while True:
-                process_images_task_thread = threading.Thread(target=self._process_next_images())
-                sql_task_thread = threading.Thread(target=self._call_sql_thread())
+            while self._gui_thread.is_alive():
+                vision_task_thread = None
+                sql_task_thread = None
                 try:
-                  process_images_task_thread.start()
-                  sql_task_thread.start()
+                    vision_task_thread = threading.Thread(target=self._call_vision_thread())
+                    vision_task_thread.start()
+
+                    if not self._processing_job.is_set():
+                        sql_task_thread = threading.Thread(target=self._call_sql_thread())
+                        sql_task_thread.start()
+
                 except Exception as e:
-                  process_images_task_thread.join()
-                  sql_task_thread.join()
-                  raise Exception(e)
+
+                    if vision_task_thread is not None:
+                        vision_task_thread.join()
+
+                    if sql_task_thread is not None:
+                        sql_task_thread.join()
+
+                    raise Exception(e)
                 else:
-                  process_images_task_thread.join()
-                  sql_task_thread.join()
+                    if vision_task_thread is not None:
+                        vision_task_thread.join()
+
+                    if sql_task_thread is not None:
+                        sql_task_thread.join()
+                        self._processing_job.set()
+                    else:
+                        msgs = self._process_sql_job()
+                        for msg in msgs:
+                            text = list(GUI_MESSAGES.keys())[list(GUI_MESSAGES.values()).index(msg[0])]
+                            text = "%s : %s" % (text, msg[1].item_type)
+                            self._gui_thread.add_msg_to_log(text)
+
+                        requested_item = self._sql_result[0]
+                        x = "N/A"
+                        y = "N/A"
+                        z = "N/A"
+                        for item in self._current_item_list:
+                            if item.item_type == requested_item.item_type:
+                                x = "%d" % item.x
+                                y = "%d" % item.y
+                                z = "%d" % item.z
+
+                        message = 'Requesting Object: %s' % requested_item.item_type
+                        self._gui_thread.set_result(2, error=message, item=requested_item.item_type,
+                                                    placement=requested_item.placement, x=x, y=y, z=z)
+                        self._gui_thread.wait_on_next_obeject_request()
+                        print("Next Iteration")
+
         except Exception:
             tb = traceback.format_exc()
             self._logger.error('Unhandled Exception:\n%s' % str(tb))
         finally:
             # Request Termination of Threads
-            self._logger.debug('Terminating Machine Learning Thread')
-            self._machine_learning_thread.terminate_thread()
-            self._logger.debug('Terminating Camera Thread')
-            self._camera_thread.terminate_thread()
-            # self._logger.debug('Terminating SQL Thread')
-            # self._sql_thread.terminate_thread()
+            self._logger.debug('Terminating Vision Thread')
+            self._vision_thread.terminate_thread()
+
+            self._logger.debug('Terminating GUI Thread')
+            self._gui_thread.terminate_thread()
 
             # Join all threads
-            self._logger.debug('Joining Machine Learning Thread')
-            self._machine_learning_thread.join()
-            self._logger.debug('Joining Camera Thread')
-            self._camera_thread.join()
+            self._logger.debug('Joining Vision Thread')
+            self._vision_thread.join()
+            self._gui_thread.join()
 
     def get_camera_images(self):
         self._logger.debug('Getting Camera Image...')
-        self._camera_thread_complete.wait()
         with self._camera_result_lock:
             result = copy.deepcopy(self._camera_result)
 
         self._logger.debug('Getting Camera Image - COMPLETE')
         return result
 
-    def _call_camera_thread(self):
-        # Get then next set of images
-        self._camera_thread_complete.clear()
-        with self._camera_result_lock:
-            self._camera_result = self._camera_thread.get_stereo_images(1)
-            self._camera_thread_complete.set()
-
-    def get_machine_learning_result(self):
-        self._logger.debug('Getting Machine Learning Results...')
-        self._machine_learning_thread_complete.wait()
-        with self._machine_learning_result_lock:
-            result = copy.deepcopy(self._machine_learning_result)
-
-        self._logger.debug('Getting Machine Learning Results - COMPLETE')
-        return result
-
-    def _call_machine_learning_thread(self, image):
-        self._machine_learning_thread_complete.clear()
-        with self._machine_learning_result_lock:
-            self._machine_learning_result = self._machine_learning_thread.process_image(image)
-            self._machine_learning_thread_complete.set()
-
-    def get_depth_map(self):
-        self._logger.debug('Getting Depth Map...')
-        self._depth_map_thread_complete.wait()
-        with self._depth_map_result_lock:
-            result = copy.deepcopy(self._depth_map_result)
-
-        self._logger.debug('Getting Depth Map - COMPLETE')
-        return result
-
-    def _call_depth_map_thread(self, images):
-        # TODO: Need to fix
-        self._depth_map_thread_complete.clear()
-        with self._depth_map_result_lock:
-            self._depth_map_result = None
-            self._depth_map_thread_complete.set()
-
     def get_sql_result(self):
         self._sql_thread_complete.wait()
         with self._sql_result_lock:
-            result =  copy.deepcopy(self._sql_result)
+            result = copy.deepcopy(self._sql_result)
         return result
+
+    def get_current_item_list(self):
+        with self._current_item_list_lock:
+            result = copy.deepcopy(self._current_item_list)
+        return result
+
+    def get_last_item_list(self):
+        with self._last_item_list_lock:
+            result = copy.deepcopy(self._last_item_list)
+        return result
+
+    def _call_vision_thread(self):
+        images = self._vision_thread.get_images()
+        items = self._vision_thread.get_items()
+
+        with self._camera_result_lock:
+            self._camera_result = images
+
+        with self._current_item_list_lock:
+            self._last_item_list = self._current_item_list
+            self._current_item_list = items
 
     def _call_sql_thread(self):
         self._sql_thread_complete.clear()
@@ -173,49 +206,68 @@ class Main:
             if next_incomplete_job is None:
                 raise ValueError("Database is empty")
 
-            self._sql_result = self._sql_db.get_object_list(next_incomplete_job[1])
+            job = self._sql_db.get_object_list(next_incomplete_job[1])
+            self._sql_result = []
+            for item in job:
+                self._sql_result.append(Item(item[1], placement=item[2]))
             self._sql_thread_complete.set()
 
-    def _process_next_images(self):
-        self._logger.debug('Calling Camera Thread...')
-        self._call_camera_thread()
-        images = self.get_camera_images()
-        self._logger.debug('Calling Camera Thread - COMPLETE')
+    def _process_sql_job(self):
+        msg = []
 
-        left = images[0][0]
-        right = images[0][1]
-        self._logger.debug('Calling Machine Learning Thread...')
-        ml_task_thread = threading.Thread(target=self._call_machine_learning_thread, args=[left])
+        sql_items = self.get_sql_result()
+        current_items = self.get_current_item_list()
+        last_items = self.get_last_item_list()
 
-        self._logger.debug('Calling Depth Map Thread Thread...')
-        depth_map_task_thread = threading.Thread(target=self._call_depth_map_thread, args=[(left, right)])
+        # Current Job is done
+        if len(sql_items) == 0:
+            msg.append((GUI_MESSAGES["JOB_QUEUE_EMPTY"],))
+            self._processing_job.clear()
+            return msg
 
-        try:
-            ml_task_thread.start()
-            depth_map_task_thread.start()
-        except Exception:
-            tb = traceback.format_exc()
-            self._logger.error('Unhandled Exception:\n%s' % str(tb))
-            ml_task_thread.join()
-            self._logger.debug('Calling Machine Learning Thread - COMPLETE')
-            depth_map_task_thread.join()
-            self._logger.debug('Calling Depth Map Thread - COMPLETE')
-            raise Exception('Unhandled Exception')
-        else:
-            ml_task_thread.join()
-            self._logger.debug('Calling Machine Learning Thread - COMPLETE')
-            depth_map_task_thread.join()
-            self._logger.debug('Calling Depth Map Thread - COMPLETE')
+        # get requested item and update visualization
+        requested_item = sql_items[0]
+        self._logger.info('Next Requested Item: %s' % requested_item.item_type)
+        msg.append((GUI_MESSAGES["CURRENT_REQUESTED_OBJECT"], requested_item))
+        self._vision_thread.set_visualization_settings(True, requested_item.item_type, 1, False, False)
 
-        self._display_machine_learning_result(left)
+        # Check if requested item was found
+        for item in current_items:
+            if item.item_type == requested_item.item_type:
+                break
+            msg.append((GUI_MESSAGES["OBJECT_NOT_FOUND"], requested_item))
 
-    def _display_machine_learning_result(self, image):
-        ml_result = self.get_machine_learning_result()
-        result = MachineLearningThread.visualize_result(image, ml_result)
-        result = cv2.resize(result, (0, 0), fx=0.5, fy=0.5)
-        cv2.imshow('GM Pick-Point', result)
-        cv2.waitKey(1)                      # DO NOT REMOVE: For some reason this works
+        # Get all items that have been removed since the last iteration
+        removed_items = []
+        for item_one in last_items:
+            found_difference = True
+            for item_two in current_items:
+                if item_one.item_type == item_two.item_type:
+                    found_difference = False
+                    break
 
+            if found_difference:
+                removed_items.append(item_one)
+
+        # Check if the correct item was removed
+        correct_item_removed = False
+        for item in removed_items:
+            if item.item_type == requested_item.item_type:
+
+                if not correct_item_removed:
+                    correct_item_removed = True
+                    print("REMOVED!!!!!")
+                    msg.append((GUI_MESSAGES["CORRECT_OBJECT_MOVED"], item))
+                else:
+                    msg.append((GUI_MESSAGES["WRONG_NUMBER_MOVED"], item))
+            else:
+                msg.append((GUI_MESSAGES["WRONG_OBJECT_REMOVED"], item))
+
+        if correct_item_removed:
+            with self._sql_result_lock:
+                self._sql_result.remove(self._sql_result[0])
+
+        return msg
 
 if __name__ == '__main__':
     main_thread = Main()

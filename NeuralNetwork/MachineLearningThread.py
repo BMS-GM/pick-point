@@ -22,24 +22,6 @@ GRAPHS = dict(FASTER_RCNN_RESNET='C:\\Users\\jmjerred-adm\\PycharmProjects\\pick
               SSD_INCEPTION_V2='C:\\Users\\jmjerred-adm\\PycharmProjects\\pick-point\\NeuralNetwork\\'
                                'ssd_inception_v2_coco\\frozen_inference_graph.pb')
 
-
-def visualize_result(img, network_output, label="ALL", max_labels=float('inf'),
-                     display_class_name=True, display_score=True):
-    """
-    Call visualization function from the network class
-    :param img: image to draw on
-    :param network_output: the TF result matrix
-    :param label: The class to label (by default all classes are labeled)
-    :param max_labels: The maximum number of labels to display (by default it is infinity)
-    :param display_class_name: If true then the class name is also displayed on the resulting image
-    :param display_score: : If true then the score is also displayed on the resulting image
-    :return: labeled image
-    """
-    result = neuralNet.Network.visualize_output(img, network_output, label=label, max_labels=max_labels,
-                                                display_class_name=display_class_name, display_score=display_score)
-    return result
-
-
 class MachineLearningThread(threading.Thread):
 
     def __init__(self, log_dir, graph_type="FASTER_RCNN_RESNET"):
