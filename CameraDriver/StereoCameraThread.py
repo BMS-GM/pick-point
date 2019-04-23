@@ -1,4 +1,17 @@
+#!/usr/bin/env python
+"""
+--------------------------------------------------------------------
+Michigan  Technological University: Blue Marble Security Enterprise
+--------------------------------------------------------------------
+
+Abstract Stereo Camera Interface Class
+"""
+
+__author__ = 'Blue Marble Security Enterprise'
+__version__ = '1.0'
+
 import threading
+
 
 class StereoCameraThread(threading.Thread):
 

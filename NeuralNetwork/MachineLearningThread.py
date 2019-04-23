@@ -22,6 +22,7 @@ GRAPHS = dict(FASTER_RCNN_RESNET='C:\\Users\\jmjerred-adm\\PycharmProjects\\pick
               SSD_INCEPTION_V2='C:\\Users\\jmjerred-adm\\PycharmProjects\\pick-point\\NeuralNetwork\\'
                                'ssd_inception_v2_coco\\frozen_inference_graph.pb')
 
+
 class MachineLearningThread(threading.Thread):
 
     def __init__(self, log_dir, graph_type="FASTER_RCNN_RESNET"):

@@ -152,8 +152,8 @@ class Network:
             if score >= MIN_SCORE:
                 class_name = LABEL_MAP_BY_ID[class_id]
 
-                x = (bbox[1] + bbox[3]) / 2.0
-                y = (bbox[0] + bbox[2]) / 2.0
+                x = ((bbox[1] + bbox[3]) / 2.0) - 0.5   # Get Offset From Center (right is +)
+                y = 0.5 - ((bbox[0] + bbox[2]) / 2.0)   # Get Offset From Center (up is +)
                 result.append(Item(class_name, x=x, y=y))
         return result
 

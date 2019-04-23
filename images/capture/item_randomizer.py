@@ -1,3 +1,16 @@
+#!/usr/bin/env python
+"""
+--------------------------------------------------------------------
+Michigan  Technological University: Blue Marble Security Enterprise
+--------------------------------------------------------------------
+
+Program to generate a random list of items
+"""
+
+__author__ = 'Blue Marble Security Enterprise'
+__version__ = '1.0'
+
+
 import numpy as np
 import random
 

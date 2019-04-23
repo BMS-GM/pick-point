@@ -12,13 +12,17 @@ from Item import Item
 from VisionThread import VisionThread
 from GUI import GUI
 
-LOG_LEVEL_CMD = logging.DEBUG
-LOG_DIR = 'Logs'
-LEFT_CAMERA_SERIAL_NUM = '18585124'
-RIGHT_CAMERA_SERIAL_NUM = '18585121'
-# GRAPH_TYPE = 'FASTER_RCNN_RESNET'
-GRAPH_TYPE = 'SSD_INCEPTION_V2'
+LOG_LEVEL_CMD = logging.WARNING         # The min log level that will be displayed in the console
+LOG_DIR = 'Logs'                        # Directory to save log files to
+LEFT_CAMERA_SERIAL_NUM = '18585124'     # Left stereo camera ID
+RIGHT_CAMERA_SERIAL_NUM = '18585121'    # Right stereo camera ID
+GRAPH_TYPE = 'SSD_INCEPTION_V2'         # Network graph model to use for object detection
+INCHES_PER_PIXEL = 0.015735782          # Number of inches each pixel represents at the datum
+IMAGE_DOWNSCALE_RATIO = 0.5             # Downscale ratio for machine learning
+                                        #    1  = process the full image (more accurate)
+                                        #    <1 = process a smaler version of the image (faster)
 
+# GUI Message Codes
 GUI_MESSAGES = dict(
                     # GENERAL MESSAGES
                     UNEXPECTED_ERROR=0,
@@ -38,6 +42,10 @@ GUI_MESSAGES = dict(
 class Main:
 
     def __init__(self):
+        """
+        Constructor
+        """
+
         # =================================
         # Setup Logging
         # =================================
@@ -64,10 +72,11 @@ class Main:
         self._logger.addHandler(console_handler)
         # =====================================================================
 
-        # Setup Multi-threading
+        # Setup GUI
         self._logger.debug('Initializing GUI Thread')
         self._gui_thread = GUI()
 
+        # Setup SQL
         self._logger.debug('Initializing SQL Thread')
         self._sql_thread = None
         self._sql_thread_complete = threading.Event()
@@ -77,39 +86,50 @@ class Main:
         self._sql_result_lock = threading.Lock()
         self._sql_db = ObjectDB.ObjectDB()
 
+        # Setup Vision Thread
         self._logger.debug('Initializing Vision Thread')
-        self._vision_thread = VisionThread(LEFT_CAMERA_SERIAL_NUM, RIGHT_CAMERA_SERIAL_NUM, GRAPH_TYPE, LOG_DIR)
+        self._vision_thread = VisionThread(LEFT_CAMERA_SERIAL_NUM, RIGHT_CAMERA_SERIAL_NUM, GRAPH_TYPE, LOG_DIR,
+                                           IMAGE_DOWNSCALE_RATIO)
 
+        # Setup local variables
         self._camera_result = None
         self._camera_result_lock = threading.Lock()
 
         self._last_item_list = []
         self._last_item_list_lock = threading.Lock()
+
         self._current_item_list = []
         self._current_item_list_lock = threading.Lock()
+
+        self._object_removed_successfully = False
+        self._object_not_found = False
 
         self._termination_requested_event = threading.Event()
 
         self._logger.debug('Threads Initialized')
 
     def main_loop(self):
+        """
+        Main Loop that will run the program until a termination is requested or on an error
+        """
         try:
             self._logger.debug('Starting Vision Thread')
             self._vision_thread.start()
 
-            while self._gui_thread.is_alive():
+            while self._gui_thread.is_alive():      # Keep going until the GUI thread dies
                 vision_task_thread = None
                 sql_task_thread = None
                 try:
                     vision_task_thread = threading.Thread(target=self._call_vision_thread())
                     vision_task_thread.start()
 
+                    # If a SQL job is being processed don't start another one
                     if not self._processing_job.is_set():
                         sql_task_thread = threading.Thread(target=self._call_sql_thread())
                         sql_task_thread.start()
 
                 except Exception as e:
-
+                    # on an error join the task threads
                     if vision_task_thread is not None:
                         vision_task_thread.join()
 
@@ -118,6 +138,7 @@ class Main:
 
                     raise Exception(e)
                 else:
+                    # Join Task Threads
                     if vision_task_thread is not None:
                         vision_task_thread.join()
 
@@ -125,27 +146,52 @@ class Main:
                         sql_task_thread.join()
                         self._processing_job.set()
                     else:
-                        msgs = self._process_sql_job()
+                        # If a SQL job is being processed then continue to processes that job
+                        lest_requested_item = self._sql_result[0]
+                        msgs = self._process_sql_job()              # Get messages from the processing
+
+                        # Log all messages to the GUI
                         for msg in msgs:
                             text = list(GUI_MESSAGES.keys())[list(GUI_MESSAGES.values()).index(msg[0])]
                             text = "%s : %s" % (text, msg[1].item_type)
                             self._gui_thread.add_msg_to_log(text)
 
+                        size = (0, 0)
+                        with self._camera_result_lock:
+                            if self._camera_result is not None:
+                                image_0 = self._camera_result[0]
+                                size = image_0.shape
+
+                        # Get the X, Y, Z coords of the object
                         requested_item = self._sql_result[0]
                         x = "N/A"
                         y = "N/A"
                         z = "N/A"
-                        for item in self._current_item_list:
-                            if item.item_type == requested_item.item_type:
-                                x = "%d" % item.x
-                                y = "%d" % item.y
-                                z = "%d" % item.z
+                        with self._current_item_list_lock:
+                            for item in self._current_item_list:
+                                if item.item_type == requested_item.item_type:
+                                    x = "%0.4f in" % (item.x * size[1] * INCHES_PER_PIXEL)
+                                    y = "%0.4f in" % (item.y * size[0] * INCHES_PER_PIXEL)
+                                    z = "%0.4f in" % item.z
+                                    print("x = %s, y = %s, z = %s" % (x, y, z))
+                                    break
 
                         message = 'Requesting Object: %s' % requested_item.item_type
-                        self._gui_thread.set_result(2, error=message, item=requested_item.item_type,
-                                                    placement=requested_item.placement, x=x, y=y, z=z)
-                        self._gui_thread.wait_on_next_obeject_request()
-                        print("Next Iteration")
+
+                        # Update GUI based on results
+                        if self._object_removed_successfully:
+                            self._gui_thread.set_result(1, error=message, item=lest_requested_item.item_type,
+                                                        placement=lest_requested_item.placement, x=x, y=y, z=z)
+                        elif self._object_not_found:
+                            self._gui_thread.set_result(0, error="Object Not Found!", item=requested_item.item_type,
+                                                        placement=requested_item.placement, x="N/A", y="N/A", z="N/A")
+                        else:
+                            self._gui_thread.set_result(2, error=message, item=requested_item.item_type,
+                                                        placement=requested_item.placement, x=x, y=y, z=z)
+
+                        self._gui_thread.wait_on_next_object_request()
+                        self._object_removed_successfully = False
+                        self._object_not_found = False
 
         except Exception:
             tb = traceback.format_exc()
@@ -164,6 +210,10 @@ class Main:
             self._gui_thread.join()
 
     def get_camera_images(self):
+        """
+        External facing function to get a stereo image pair
+        :return: a stereo image pair
+        """
         self._logger.debug('Getting Camera Image...')
         with self._camera_result_lock:
             result = copy.deepcopy(self._camera_result)
@@ -172,22 +222,38 @@ class Main:
         return result
 
     def get_sql_result(self):
+        """
+        External facing function to get the current SQL job
+        :return: a stereo image pairan SQL job
+        """
+
         self._sql_thread_complete.wait()
         with self._sql_result_lock:
             result = copy.deepcopy(self._sql_result)
         return result
 
     def get_current_item_list(self):
+        """
+        External facing function to get a list of Items that are in the current frame
+        :return: a list of Items
+        """
         with self._current_item_list_lock:
             result = copy.deepcopy(self._current_item_list)
         return result
 
     def get_last_item_list(self):
+        """
+        External facing function to get a list of Items that where in the last frame
+        :return: a list of Items
+        """
         with self._last_item_list_lock:
             result = copy.deepcopy(self._last_item_list)
         return result
 
     def _call_vision_thread(self):
+        """
+        Task thread method to call request updated info from the vision thread
+        """
         images = self._vision_thread.get_images()
         items = self._vision_thread.get_items()
 
@@ -199,6 +265,9 @@ class Main:
             self._current_item_list = items
 
     def _call_sql_thread(self):
+        """
+        Task thread function to call the SQL thread to request a new job
+        """
         self._sql_thread_complete.clear()
         with self._sql_result_lock:
             next_incomplete_job = self._sql_db.get_incomplete_job()
@@ -213,6 +282,9 @@ class Main:
             self._sql_thread_complete.set()
 
     def _process_sql_job(self):
+        """
+        Internal function to process the current sql job
+        """
         msg = []
 
         sql_items = self.get_sql_result()
@@ -232,10 +304,15 @@ class Main:
         self._vision_thread.set_visualization_settings(True, requested_item.item_type, 1, False, False)
 
         # Check if requested item was found
+        item_found = False
         for item in current_items:
             if item.item_type == requested_item.item_type:
+                item_found = True
                 break
+
+        if not item_found:
             msg.append((GUI_MESSAGES["OBJECT_NOT_FOUND"], requested_item))
+            self._object_not_found = False
 
         # Get all items that have been removed since the last iteration
         removed_items = []
@@ -256,7 +333,6 @@ class Main:
 
                 if not correct_item_removed:
                     correct_item_removed = True
-                    print("REMOVED!!!!!")
                     msg.append((GUI_MESSAGES["CORRECT_OBJECT_MOVED"], item))
                 else:
                     msg.append((GUI_MESSAGES["WRONG_NUMBER_MOVED"], item))
@@ -266,8 +342,9 @@ class Main:
         if correct_item_removed:
             with self._sql_result_lock:
                 self._sql_result.remove(self._sql_result[0])
-
+            self._object_removed_successfully = True
         return msg
+
 
 if __name__ == '__main__':
     main_thread = Main()

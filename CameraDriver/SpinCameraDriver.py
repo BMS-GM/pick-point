@@ -107,6 +107,10 @@ class SpinCameraDriver(CameraDriver.CameraDriver):
         return result
 
     def get_info(self):
+        """
+        Retrieve the information on the camera
+        :return:
+        """
         result = [True,  # All Info Acquired
                   None,  # Serial Number
                   None,  # Vendor Name

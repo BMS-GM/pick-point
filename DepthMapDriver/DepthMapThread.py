@@ -1,3 +1,16 @@
+#!/usr/bin/env python
+"""
+--------------------------------------------------------------------
+Michigan  Technological University: Blue Marble Security Enterprise
+--------------------------------------------------------------------
+
+Depth Mapping Thread
+*** NOT FULLY IMPLEMENTED ***
+"""
+
+__author__ = 'Blue Marble Security Enterprise'
+__version__ = '1.0'
+
 import threading
 import numpy as np
 import logging
@@ -6,11 +19,11 @@ import copy
 
 class DepthMapThread(threading.Thread):
 
-    def __init__(self, left_image, right_imaage):
+    def __init__(self, left_image, right_image):
         """
         Class Constructor. This also automatically starts the thread
         :param left_image: the left image in a stereo pair
-        :param right_imaage: the right image in a stereo pair
+        :param right_image: the right image in a stereo pair
         """
         # Setup Threading
         super(DepthMapThread, self).__init__()       # Initialize Thread
@@ -20,7 +33,7 @@ class DepthMapThread(threading.Thread):
         self._image_returned_event.clear()
 
         self._left_image = left_image
-        self._right_image = right_imaage
+        self._right_image = right_image
         self._result = None
 
         # init the logger
@@ -29,7 +42,11 @@ class DepthMapThread(threading.Thread):
         self.start()
 
     def run(self):
+        """
+        Main Thread Function
+        """
         self._logger.debug("Running Depth Map Thread...")
+        self._logger.warning("Depth Mapping is not implemented - Setting result matrix to zero")
 
         rows = self._left_image.shape[0]
         cols = self._left_image.shape[1]
@@ -40,6 +57,10 @@ class DepthMapThread(threading.Thread):
         self._image_returned_event.wait()
 
     def get_image(self):
+        """
+        Force Calling Thread to wait until an depth matrix (image) is ready
+        :return: A Depth Map
+        """
         self._logger.info("Requesting Depth Map Result")
         self._logger.info("Waiting For Image To Be Ready")
         self._image_ready_event.wait()
@@ -49,6 +70,9 @@ class DepthMapThread(threading.Thread):
         return image
 
     def terminate_thread(self):
+        """
+        Request the thread to terminate
+        """
         self._image_returned_event.set()
         self._image_ready_event.set()
 
