@@ -5,6 +5,9 @@ Michigan  Technological University: Blue Marble Security Enterprise
 --------------------------------------------------------------------
 
 methods for managing SQLite database tables and rows
+This is for internal use only to make it easier to edit and
+view tables.  Some database management may require you to go into the
+terminal and work from there.  The sqlite database file is "pickpoint.db"
 """
 
 __author__ = 'Blue Marble Security Enterprise'
@@ -29,7 +32,7 @@ def connect():
 
 def create_table(conn, table):
     """
-    Creates a table in the database
+    Creates a table for a particular job
     :param conn: connection to database
            table: name of table
     :return: N/A
@@ -46,8 +49,8 @@ def create_table(conn, table):
 
 def insert_object(conn, name, destination, table, count):
     """
-    Inserts a type of object into the database. Can insert
-    multiple of the same part/destination
+    Inserts a type of object into a job table in the database.
+    Can insert multiple of the same part/destination
     :param conn: connection to database
            name: name of the part
            destination: location where part is to be placed

@@ -5,7 +5,7 @@ Michigan  Technological University: Blue Marble Security Enterprise
 --------------------------------------------------------------------
 
 Driver to connect to SQLite database and get jobs and objects from
-tables
+tables.
 """
 
 __author__ = 'Blue Marble Security Enterprise'
@@ -154,6 +154,10 @@ class ObjectDB(SQLiteDriver.SQLiteDriver):
 
 
 if __name__ == '__main__':
+    """
+    This is stuff to make sure things are working correctly
+    """
+
     a = ObjectDB()
 
     if not a.is_connected():
