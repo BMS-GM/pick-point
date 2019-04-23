@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+"""
+--------------------------------------------------------------------
+Michigan  Technological University: Blue Marble Security Enterprise
+--------------------------------------------------------------------
+
+Main Program Class
+"""
+
+__author__ = 'Blue Marble Security Enterprise'
+__version__ = '1.0'
+
 import threading
 import numpy as np
 import cv2
