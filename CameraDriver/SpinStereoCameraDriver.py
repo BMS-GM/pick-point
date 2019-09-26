@@ -13,7 +13,7 @@ __version__ = '1.0'
 import sys
 import logging
 import threading
-import PySpin
+import pyspin.PySpin as PySpin
 import copy
 
 from CameraDriver.StereoCameraThread import StereoCameraThread

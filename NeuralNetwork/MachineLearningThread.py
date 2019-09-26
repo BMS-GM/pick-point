@@ -14,13 +14,14 @@ import threading
 import logging
 import datetime
 import copy
+import os
 
 from NeuralNetwork import NeuralNetwork as neuralNet
 
-GRAPHS = dict(FASTER_RCNN_RESNET='C:\\Users\\jmjerred-adm\\PycharmProjects\\pick-point\\NeuralNetwork\\'
-                                 'faster_rcnn_resnet101_coco\\frozen_inference_graph.pb',
-              SSD_INCEPTION_V2='C:\\Users\\jmjerred-adm\\PycharmProjects\\pick-point\\NeuralNetwork\\'
-                               'ssd_inception_v2_coco\\frozen_inference_graph.pb')
+# Base directories off relative paths os.getcwd() returns when main.py is ran from
+# ie. pick-point folder
+GRAPHS = dict(FASTER_RCNN_RESNET= os.getcwd() + "\\NeuralNetwork\\faster_rcnn_resnet101_coco\\frozen_inference_graph.pb",
+              SSD_INCEPTION_V2= os.getcwd() + "\\NeuralNetwork\\ssd_inception_v2_coco\\frozen_inference_graph.pb")
 
 
 class MachineLearningThread(threading.Thread):

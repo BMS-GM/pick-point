@@ -11,6 +11,7 @@ tables.
 __author__ = 'Blue Marble Security Enterprise'
 __version__ = '1.0'
 
+import os
 import sqlite3
 import threading
 import logging
@@ -35,7 +36,7 @@ class ObjectDB(SQLiteDriver.SQLiteDriver):
         """
         conn = None
         try:
-            conn = sqlite3.connect("C:\\Users\\jmjerred-adm\\PycharmProjects\\pick-point\\SQL_Driver\\pickpoint.db")
+            conn = sqlite3.connect(os.getcwd() + "\SQL_Driver\pickpoint.db")
             self._logger.info("Connection to database created")
             return conn
         except sqlite3.Error:

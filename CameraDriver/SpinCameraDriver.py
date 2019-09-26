@@ -12,7 +12,7 @@ __version__ = '1.0'
 
 import sys
 import datetime
-import PySpin
+import pyspin.PySpin as PySpin
 import numpy as np
 import cv2
 import logging
