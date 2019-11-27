@@ -13,6 +13,7 @@ __version__ = '1.0'
 import ssh2
 import threading
 import os
+import logging
 import socket
 
 class RoboticArmDriver(threading.Thread):
@@ -22,20 +23,22 @@ class RoboticArmDriver(threading.Thread):
         Class Constructor. This also automatically starts the thread
         """
         # Setup Threading
-        super(RoboticArmDriver, self).__init__()       # Initialize Thread
+        #super(RoboticArmDriver, self).__init__()       # Initialize Thread
+        threading.Thread.__init__(self)
         self._ssh_ready_event = threading.Event()
         self._ssh_ready_event.clear()
         self._ssh_returned_event = threading.Event()
 
         self._result = None
 
-        self.hostname = 'localhost'
-        self.user = 'testUser'
+        self.hostname = '169.254.200.200'
+        self.user = 'niryo'
+        self.password = 'robotics'
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((hostname, 22))
         self.session = ssh2.session.Session()
         self.session.handshake(sock)
-        self.session.agent_auth(user)
+        self.session.agent_auth(self.user, self.password)
 
         self.channel = self.session.open_session()
         channel = session.open_session()
