@@ -16,6 +16,12 @@ import numpy as np
 import logging
 import copy
 
+import cv2 as cv2
+import pyspin.PySpin as pyspin
+import os
+from matplotlib import pyplot
+from CameraDriver.SpinCameraDriver import SpinCameraDriver
+
 
 class DepthMapThread(threading.Thread):
 

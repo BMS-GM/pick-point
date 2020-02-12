@@ -15,11 +15,16 @@ import numpy as np
 import logging
 import copy
 import cv2
+import os
+from pyspin import PySpin
+from matplotlib import pyplot as plt
+import sys
 import datetime
 import time
 import traceback
 
 from CameraDriver.SpinStereoCameraDriver import SpinStereoCameraDriver
+from CameraDriver.SpinCameraDriver import SpinCameraDriver
 from NeuralNetwork import MachineLearningThread
 from Item import Item
 from NeuralNetwork.NeuralNetwork import Network
@@ -76,6 +81,7 @@ class VisionThread(threading.Thread):
         self._display_class_name = False
         self._display_score = False
 
+        self.img_counter = 0
 
         self._item_list = []
         self._item_list_lock = threading.Lock()
@@ -151,11 +157,54 @@ class VisionThread(threading.Thread):
                 left = images[0][0]
                 right = images[0][1]
 
+                img_name = os.getcwd() + "\images\capture\cam_0_frame_{}.png".format(self.img_counter)
+                print("Saved Left")
+                cv2.imwrite(img_name, left)
+                leftName = img_name
+                img_name = os.getcwd() + "\images\capture\cam_1_frame_{}.png".format(self.img_counter)
+                print("Saved Right")
+                cv2.imwrite(img_name, right)
+                rightName = img_name
+
+                imgL = cv2.imread(leftName,0)
+                imgR = cv2.imread(rightName,0)
+
+                numD = int(input("How much dis: "))
+                block = int(input("How much block:" ))
+                mini = int(input("Minimum: "))
+
+                stereo = cv2.StereoBM_create(numDisparities= numD * 16, blockSize= block)
+                disparity = stereo.compute(imgL,imgR)
+                plt.imshow(disparity,'gray')
+                plt.show()
+                self.img_counter = self.img_counter + 1
+
+                
+
+                """
+                system = PySpin.System_GetInstance()
+                cam_list = system.get_stereo_images
+
+                if cam_list.GetSize() < 2:
+                    system.ReleaseInstance()
+                    del system
+                    sys.exit()
+
+                cam_0 = cam_list.GetByIndex(0)
+                cam_1 = cam_list.GetByIndex(1)
+                drivers = [SpinCameraDriver(cam_0), SpinCameraDriver(cam_1)]
+                img_counter = 1
+                image_cam_0 = drivers[0].get_image(1)[0]
+                image_cam_1 = drivers[1].get_image(1)[0]
+                """
+                
+
                 with self._camera_result_lock:
                     self._camera_result = (left, right)
 
                 # process images
                 self._depth_map_thread = DepthMapThread(left, right)
+                #self._depth_map_thread = DepthMapThread(leftName, rightName)
                 downscaled_img = cv2.resize(left, (0, 0), fx=self._downscale_ratio, fy=self._downscale_ratio)
                 ml_result = self._machine_learning_thread.process_image(downscaled_img)
                 depth_map = self._depth_map_thread.get_image()

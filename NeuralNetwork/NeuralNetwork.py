@@ -186,6 +186,7 @@ class Network:
                 right = bbox[3] * cols
                 bottom = bbox[2] * rows
                 cv2.rectangle(result_img, (int(x), int(y)), (int(right), int(bottom)), (125, 255, 51), thickness=2)
+                print("X: {}  Y: {}".format(x, y))
 
                 if display_class_name:
                     class_name = LABEL_MAP_BY_ID[class_id]

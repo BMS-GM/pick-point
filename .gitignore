@@ -11,3 +11,15 @@ ImgLabel/
 
 # ignore neural networks
 NeuralNetwork/faster_rcnn_resnet101_coco
+*.xml
+*.iml
+*.json
+*.pyc
+*.db
+DepthMap-Img0.png
+testMap.png
+VisionThread.py
+NeuralNetwork/NeuralNetwork.py
+main.py
+DepthMapDriver/DepthMapThread.py
+DepthMapDriver/DepthMap_F19.py
