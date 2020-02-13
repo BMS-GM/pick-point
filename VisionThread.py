@@ -157,6 +157,17 @@ class VisionThread(threading.Thread):
                 left = images[0][0]
                 right = images[0][1]
 
+                # If Calibration is needed, collect data
+                calibration = True
+
+                if (calibration):
+                    img_name1 = os.getcwd() + "\calibration\cam_0_images\cam_0_frame_{}.png".format(self.img_counter)
+                    img_name2 = os.getcwd() + "\calibration\cam_1_images\cam_1_frame_{}.png".format(self.img_counter)
+                    cv2.imwrite(img_name1, left)
+                    cv2.imwrite(img_name2, right)
+                    leftName = img_name1
+                    rightName = img_name2
+
                 img_name = os.getcwd() + "\images\capture\cam_0_frame_{}.png".format(self.img_counter)
                 print("Saved Left")
                 cv2.imwrite(img_name, left)
@@ -169,14 +180,6 @@ class VisionThread(threading.Thread):
                 imgL = cv2.imread(leftName,0)
                 imgR = cv2.imread(rightName,0)
 
-                numD = int(input("How much dis: "))
-                block = int(input("How much block:" ))
-                mini = int(input("Minimum: "))
-
-                stereo = cv2.StereoBM_create(numDisparities= numD * 16, blockSize= block)
-                disparity = stereo.compute(imgL,imgR)
-                plt.imshow(disparity,'gray')
-                plt.show()
                 self.img_counter = self.img_counter + 1
 
                 
