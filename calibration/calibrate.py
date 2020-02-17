@@ -15,7 +15,7 @@ import sys
 import numpy as np
 import cv2
 
-CHESSBOARD_SIZE = (7, 6)
+CHESSBOARD_SIZE = (7, 7)
 CHESSBOARD_OPTIONS = (cv2.CALIB_CB_ADAPTIVE_THRESH |
         cv2.CALIB_CB_NORMALIZE_IMAGE | cv2.CALIB_CB_FAST_CHECK)
 
@@ -105,7 +105,10 @@ if leftSize != rightSize:
     sys.exit(1)
 imageSize = leftSize
 
+print("Left Filenames: {}, Right Filenames: {}".format(len(leftFilenames), len(rightFilenames)))
+
 filenames = list(set(leftFilenames) & set(rightFilenames))
+print("What Filenames is: {}".format(len(filenames)))
 if (len(filenames) > MAX_IMAGES):
     print("Too many images to calibrate, using {0} randomly selected images"
             .format(MAX_IMAGES))
@@ -116,6 +119,7 @@ print(filenames)
 
 def getMatchingObjectAndImagePoints(requestedFilenames,
         allFilenames, objectPoints, imagePoints):
+    print("Requested: {}    all: {}".format(len(requestedFilenames), len(allFilenames)))
     requestedFilenameSet = set(requestedFilenames)
     requestedObjectPoints = []
     requestedImagePoints = []
@@ -124,6 +128,8 @@ def getMatchingObjectAndImagePoints(requestedFilenames,
         if filename in requestedFilenameSet:
             requestedObjectPoints.append(objectPoints[index])
             requestedImagePoints.append(imagePoints[index])
+
+    print("Added Everything, object points: {} Image Points: {}".format(len(requestedObjectPoints), len(imagePoints)))
 
     return requestedObjectPoints, requestedImagePoints
 
@@ -138,6 +144,8 @@ rightObjectPoints, rightImagePoints = getMatchingObjectAndImagePoints(filenames,
 #     print("Object points do not match")
 #     sys.exit(1)
 objectPoints = leftObjectPoints
+
+print("Object Points Final: {}".format(len(objectPoints)))
 
 print("Calibrating left camera...")
 _, leftCameraMatrix, leftDistortionCoefficients, _, _ = cv2.calibrateCamera(
