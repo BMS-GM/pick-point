@@ -107,7 +107,11 @@ imageSize = leftSize
 
 print("Left Filenames: {}, Right Filenames: {}".format(len(leftFilenames), len(rightFilenames)))
 
-filenames = list(set(leftFilenames) & set(rightFilenames))
+filenames = []
+
+filenames += leftFilenames
+filenames += rightFilenames
+
 print("What Filenames is: {}".format(len(filenames)))
 if (len(filenames) > MAX_IMAGES):
     print("Too many images to calibrate, using {0} randomly selected images"
