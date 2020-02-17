@@ -86,6 +86,26 @@ class VisionThread(threading.Thread):
         self._item_list = []
         self._item_list_lock = threading.Lock()
 
+        # load camera calibration
+        self.calibration = np.load(os.getcwd() + '/calibration/calibration.npz')
+        self.imageSize = tuple(self.calibration["imageSize"])
+        self.leftMapX = self.calibration["leftMapX"]
+        self.leftMapY = self.calibration["leftMapY"]
+        self.leftROI = tuple(self.calibration["leftROI"])
+        self.rightMapX = self.calibration["rightMapX"]
+        self.rightMapY = self.calibration["rightMapY"]
+        self.rightROI = tuple(self.calibration["rightROI"])
+
+        # create the stereo driver
+        self.stereoVision = cv2.SeteroBM_create()
+        self.stereoVision.setMinDisparity(4)
+        self.stereoVision.setNumDisparity(128)
+        self.stereoVision.setBlockSize(21)
+        self.stereoVision.setROI1(leftROI)
+        self.stereoVision.setROI2(rightROI)
+        self.stereoVision.setSpeckleRange(16)
+        self.stereoVision.setSpeckleWindowSize(45)
+
         self._logger.debug('Threads Initialized')
 
     def run(self):
@@ -158,7 +178,7 @@ class VisionThread(threading.Thread):
                 right = images[0][1]
 
                 # If Calibration is needed, collect data
-                calibration = True
+                calibration = False
 
                 if (calibration):
                     img_name1 = os.getcwd() + "\calibration\cam_0_images\cam_0_frame_{}.png".format(self.img_counter)
@@ -168,17 +188,35 @@ class VisionThread(threading.Thread):
                     leftName = img_name1
                     rightName = img_name2
 
-                img_name = os.getcwd() + "\images\capture\cam_0_frame_{}.png".format(self.img_counter)
-                print("Saved Left")
+                # Grab the images
+                img_name = os.getcwd() + "\images\capture\cam_0.png"
                 cv2.imwrite(img_name, left)
                 leftName = img_name
-                img_name = os.getcwd() + "\images\capture\cam_1_frame_{}.png".format(self.img_counter)
-                print("Saved Right")
+                img_name = os.getcwd() + "\images\capture\cam_1.png"
                 cv2.imwrite(img_name, right)
                 rightName = img_name
 
                 imgL = cv2.imread(leftName,0)
                 imgR = cv2.imread(rightName,0)
+
+                leftHeight, leftWidth = imgL.shape[:2]
+                rightHeight, rightWidge = imgR.shape[:2]
+
+                if (leftWidth, leftHeight) != self.imageSize
+                    self._logger.debug('Left Camera does not match calibration')
+
+                if (rightWidth, rightHeight) != self.imageSize
+                    self._logger.debug('Right Camera does not match calibration')
+
+                calImgL = cv2.remap(imgL, self.leftMapX, self.leftMapY, REMAP_INTERPOLATION)
+                calImgR = cv2.remap(imgR, self.rightMapX, self.rightMapY, REMAP_INTERPOLATION)
+
+                gLeft = cv2.cvtColor(calImgL, cv2.COLOR_BGR2GRAY)
+                gRight = cv2.cvtColor(calImgR, cv2.COLOR_BGR2GRAY)
+
+                depthMap = self.stereoVision.compute(gLeft, gRight)
+
+                cv2.imshow('depthMap', depthMap / DEPTH_VISUALIZATION_SCALE)
 
                 self.img_counter = self.img_counter + 1
 
@@ -207,6 +245,8 @@ class VisionThread(threading.Thread):
 
                 # process images
                 self._depth_map_thread = DepthMapThread(left, right)
+
+
                 #self._depth_map_thread = DepthMapThread(leftName, rightName)
                 downscaled_img = cv2.resize(left, (0, 0), fx=self._downscale_ratio, fy=self._downscale_ratio)
                 ml_result = self._machine_learning_thread.process_image(downscaled_img)
