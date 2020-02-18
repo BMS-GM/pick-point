@@ -15,6 +15,7 @@ import numpy as np
 import logging
 import copy
 import cv2
+import skimage
 import os
 from pyspin import PySpin
 from matplotlib import pyplot as plt
@@ -30,6 +31,8 @@ from Item import Item
 from NeuralNetwork.NeuralNetwork import Network
 from DepthMapDriver.DepthMapThread import DepthMapThread
 
+REMAP_INTERPOLATION = cv2.INTER_LINEAR
+DEPTH_VISUALIZATION_SCALE = 8192 * 2
 
 SHOW_FPS = False
 
@@ -88,6 +91,8 @@ class VisionThread(threading.Thread):
 
         # load camera calibration
         self.calibration = np.load(os.getcwd() + '/calibration/calibration.npz')
+        if (self.calibration):
+            print("Calibration Loaded")
         self.imageSize = tuple(self.calibration["imageSize"])
         self.leftMapX = self.calibration["leftMapX"]
         self.leftMapY = self.calibration["leftMapY"]
@@ -97,14 +102,14 @@ class VisionThread(threading.Thread):
         self.rightROI = tuple(self.calibration["rightROI"])
 
         # create the stereo driver
-        self.stereoVision = cv2.SeteroBM_create()
-        self.stereoVision.setMinDisparity(4)
-        self.stereoVision.setNumDisparity(128)
-        self.stereoVision.setBlockSize(21)
-        self.stereoVision.setROI1(leftROI)
-        self.stereoVision.setROI2(rightROI)
-        self.stereoVision.setSpeckleRange(16)
-        self.stereoVision.setSpeckleWindowSize(45)
+        self.stereoMatcher = cv2.StereoBM_create()
+        #self.stereoMatcher.setMinDisparity(4)
+        self.stereoMatcher.setNumDisparities(16)
+        self.stereoMatcher.setBlockSize(5)
+        self.stereoMatcher.setROI1(self.leftROI)
+        self.stereoMatcher.setROI2(self.rightROI)
+        #self.stereoMatcher.setSpeckleRange(16)
+        #self.stereoMatcher.setSpeckleWindowSize(45)
 
         self._logger.debug('Threads Initialized')
 
@@ -189,34 +194,34 @@ class VisionThread(threading.Thread):
                     rightName = img_name2
 
                 # Grab the images
-                img_name = os.getcwd() + "\images\capture\cam_0.png"
+                img_name = os.getcwd() + "\images\capture\cam_0_frame_{}.png".format(self.img_counter)
                 cv2.imwrite(img_name, left)
                 leftName = img_name
-                img_name = os.getcwd() + "\images\capture\cam_1.png"
+                img_name = os.getcwd() + "\images\capture\cam_1_frame_{}.png".format(self.img_counter)
                 cv2.imwrite(img_name, right)
                 rightName = img_name
 
-                imgL = cv2.imread(leftName,0)
-                imgR = cv2.imread(rightName,0)
+                imgL = cv2.imread(leftName)
+                imgR = cv2.imread(rightName)
+                
+                imgL = np.array(imgL, dtype=np.uint8)
+                imgR = np.array(imgR, dtype=np.uint8)
 
                 leftHeight, leftWidth = imgL.shape[:2]
                 rightHeight, rightWidge = imgR.shape[:2]
 
-                if (leftWidth, leftHeight) != self.imageSize
-                    self._logger.debug('Left Camera does not match calibration')
-
-                if (rightWidth, rightHeight) != self.imageSize
-                    self._logger.debug('Right Camera does not match calibration')
-
                 calImgL = cv2.remap(imgL, self.leftMapX, self.leftMapY, REMAP_INTERPOLATION)
                 calImgR = cv2.remap(imgR, self.rightMapX, self.rightMapY, REMAP_INTERPOLATION)
+
+                calImgL = np.array(calImgL, dtype=np.uint8)
+                calImgR = np.array(calImgR, dtype=np.uint8)
 
                 gLeft = cv2.cvtColor(calImgL, cv2.COLOR_BGR2GRAY)
                 gRight = cv2.cvtColor(calImgR, cv2.COLOR_BGR2GRAY)
 
-                depthMap = self.stereoVision.compute(gLeft, gRight)
+                depthMap = self.stereoMatcher.compute(gLeft, gRight)
 
-                cv2.imshow('depthMap', depthMap / DEPTH_VISUALIZATION_SCALE)
+                #cv2.imshow('depthMap', depthMap / DEPTH_VISUALIZATION_SCALE)
 
                 self.img_counter = self.img_counter + 1
 
