@@ -15,6 +15,7 @@ import numpy as np
 import logging
 import copy
 import cv2
+import skimage
 import os
 from pyspin import PySpin
 from matplotlib import pyplot as plt
@@ -30,6 +31,8 @@ from Item import Item
 from NeuralNetwork.NeuralNetwork import Network
 from DepthMapDriver.DepthMapThread import DepthMapThread
 
+REMAP_INTERPOLATION = cv2.INTER_LINEAR
+DEPTH_VISUALIZATION_SCALE = 8192 * 2
 
 SHOW_FPS = False
 
@@ -85,6 +88,28 @@ class VisionThread(threading.Thread):
 
         self._item_list = []
         self._item_list_lock = threading.Lock()
+
+        # load camera calibration
+        self.calibration = np.load(os.getcwd() + '/calibration/calibration.npz')
+        if (self.calibration):
+            print("Calibration Loaded")
+        self.imageSize = tuple(self.calibration["imageSize"])
+        self.leftMapX = self.calibration["leftMapX"]
+        self.leftMapY = self.calibration["leftMapY"]
+        self.leftROI = tuple(self.calibration["leftROI"])
+        self.rightMapX = self.calibration["rightMapX"]
+        self.rightMapY = self.calibration["rightMapY"]
+        self.rightROI = tuple(self.calibration["rightROI"])
+
+        # create the stereo driver
+        self.stereoMatcher = cv2.StereoBM_create()
+        #self.stereoMatcher.setMinDisparity(4)
+        self.stereoMatcher.setNumDisparities(16)
+        self.stereoMatcher.setBlockSize(5)
+        self.stereoMatcher.setROI1(self.leftROI)
+        self.stereoMatcher.setROI2(self.rightROI)
+        #self.stereoMatcher.setSpeckleRange(16)
+        #self.stereoMatcher.setSpeckleWindowSize(45)
 
         self._logger.debug('Threads Initialized')
 
@@ -158,7 +183,7 @@ class VisionThread(threading.Thread):
                 right = images[0][1]
 
                 # If Calibration is needed, collect data
-                calibration = True
+                calibration = False
 
                 if (calibration):
                     img_name1 = os.getcwd() + "\calibration\cam_0_images\cam_0_frame_{}.png".format(self.img_counter)
@@ -168,17 +193,35 @@ class VisionThread(threading.Thread):
                     leftName = img_name1
                     rightName = img_name2
 
+                # Grab the images
                 img_name = os.getcwd() + "\images\capture\cam_0_frame_{}.png".format(self.img_counter)
-                print("Saved Left")
                 cv2.imwrite(img_name, left)
                 leftName = img_name
                 img_name = os.getcwd() + "\images\capture\cam_1_frame_{}.png".format(self.img_counter)
-                print("Saved Right")
                 cv2.imwrite(img_name, right)
                 rightName = img_name
 
-                imgL = cv2.imread(leftName,0)
-                imgR = cv2.imread(rightName,0)
+                imgL = cv2.imread(leftName)
+                imgR = cv2.imread(rightName)
+                
+                imgL = np.array(imgL, dtype=np.uint8)
+                imgR = np.array(imgR, dtype=np.uint8)
+
+                leftHeight, leftWidth = imgL.shape[:2]
+                rightHeight, rightWidge = imgR.shape[:2]
+
+                calImgL = cv2.remap(imgL, self.leftMapX, self.leftMapY, REMAP_INTERPOLATION)
+                calImgR = cv2.remap(imgR, self.rightMapX, self.rightMapY, REMAP_INTERPOLATION)
+
+                calImgL = np.array(calImgL, dtype=np.uint8)
+                calImgR = np.array(calImgR, dtype=np.uint8)
+
+                gLeft = cv2.cvtColor(calImgL, cv2.COLOR_BGR2GRAY)
+                gRight = cv2.cvtColor(calImgR, cv2.COLOR_BGR2GRAY)
+
+                depthMap = self.stereoMatcher.compute(gLeft, gRight)
+
+                #cv2.imshow('depthMap', depthMap / DEPTH_VISUALIZATION_SCALE)
 
                 self.img_counter = self.img_counter + 1
 
@@ -207,6 +250,8 @@ class VisionThread(threading.Thread):
 
                 # process images
                 self._depth_map_thread = DepthMapThread(left, right)
+
+
                 #self._depth_map_thread = DepthMapThread(leftName, rightName)
                 downscaled_img = cv2.resize(left, (0, 0), fx=self._downscale_ratio, fy=self._downscale_ratio)
                 ml_result = self._machine_learning_thread.process_image(downscaled_img)
