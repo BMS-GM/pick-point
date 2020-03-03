@@ -4,7 +4,9 @@
 Michigan  Technological University: Blue Marble Security Enterprise
 --------------------------------------------------------------------
 
-Main Program Class
+main.py
+Author: Shaun Flynn
+Date last modified: 4/23/19
 """
 
 __author__ = 'Blue Marble Security Enterprise'

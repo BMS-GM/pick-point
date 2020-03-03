@@ -6,6 +6,10 @@ Michigan  Technological University: Blue Marble Security Enterprise
 
 Driver to connect to SQLite database and get jobs and objects from
 tables.
+
+ObjectDB.py
+Author: careyes1 [GitHub]
+Date Last Modified 9/25/2019
 """
 
 __author__ = 'Blue Marble Security Enterprise'

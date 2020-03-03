@@ -8,6 +8,10 @@ methods for managing SQLite database tables and rows
 This is for internal use only to make it easier to edit and
 view tables.  Some database management may require you to go into the
 terminal and work from there.  The sqlite database file is "pickpoint.db"
+
+DBManager.py
+Author: careyes1 [GitHub]
+Date Last Modified 4/23/2019
 """
 
 __author__ = 'Blue Marble Security Enterprise'

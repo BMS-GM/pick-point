@@ -5,6 +5,10 @@ Michigan  Technological University: Blue Marble Security Enterprise
 --------------------------------------------------------------------
 
 Abstract class for camera drivers
+
+CameraDriver.py
+Author: Shaun Flynn
+Date Last Modified 2/18/2019
 """
 
 __author__ = 'Blue Marble Security Enterprise'

@@ -4,6 +4,10 @@
 Michigan  Technological University: Blue Marble Security Enterprise
 --------------------------------------------------------------------
 Abstract class for SQLite drivers
+
+SQLiteDriver.py
+Author: careyes1 [GitHub]
+Date Last Modified 4/7/2019
 """
 
 __author__ = 'Blue Marble Security Enterprise'

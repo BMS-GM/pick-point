@@ -5,6 +5,10 @@ Michigan  Technological University: Blue Marble Security Enterprise
 --------------------------------------------------------------------
 
 Vision Thread Class
+
+Vision Thread Class.py
+Author: Shaun Flynn
+Date Last Modified 2/18/2019
 """
 
 __author__ = 'Blue Marble Security Enterprise'
@@ -38,6 +42,15 @@ SHOW_FPS = False
 
 class VisionThread(threading.Thread):
 
+    """
+    Define the Initialization of the Vision Thread
+    self - the definition of the thread
+    left_camera_id - the id of the left camera
+    right_camera_id - the id of the right camera
+    network_model - the neural network model
+    log_dir - Where the log file is stored
+    downscale_ratio - How much to scale down the images by
+    """
     def __init__(self, left_camera_id, right_camera_id, network_model, log_dir, downscale_ratio):
         """
         Constructor
@@ -113,6 +126,10 @@ class VisionThread(threading.Thread):
 
         self._logger.debug('Threads Initialized')
 
+    """
+    Run the thread
+    self - the self of the thread
+    """
     def run(self):
         """
         Main thread function
@@ -121,6 +138,10 @@ class VisionThread(threading.Thread):
         self._main_loop()
         self._logger.debug('Terminated Thread')
 
+    """
+    Get the identified result
+    self - the self of the thread
+    """
     def get_machine_learning_result(self):
         """
         External facing function to get the latest results about detected objects
@@ -130,6 +151,10 @@ class VisionThread(threading.Thread):
             result = copy.deepcopy(self._machine_learning_result)
         return result
 
+    """
+    Get the images from the cameras
+    self - the self of the thread
+    """
     def get_images(self):
         """
         External facing function to get the latest stereo image pair
@@ -139,6 +164,10 @@ class VisionThread(threading.Thread):
             result = copy.deepcopy(self._camera_result)
         return result
 
+    """
+    Get the latest created depth map
+    self - the self of the thread
+    """
     def get_depth_map(self):
         """
         External facing function to get the latest depthmap
@@ -148,6 +177,10 @@ class VisionThread(threading.Thread):
             result = copy.deepcopy(self._depth_map_result)
         return result
 
+    """
+    Get the list of detected items and the positions
+    self - the self of the thread
+    """
     def get_items(self):
         """
         External facing method to get the latest list of detected items and their positions
@@ -157,6 +190,10 @@ class VisionThread(threading.Thread):
             result = copy.deepcopy(self._item_list)
         return result
 
+    """
+    Kill the thread
+    self - the self of the thread
+    """
     def terminate_thread(self):
         """
         External facing method to request termination of this thread
@@ -164,6 +201,10 @@ class VisionThread(threading.Thread):
         self._logger.debug("Requesting Termination")
         self._terminate_thread_event.set()
 
+    """
+    Loop the thread to keep it running
+    self - the self of the thread
+    """
     def _main_loop(self):
         """
         Main loop of this thread. Terminate on termination request or on error
@@ -185,6 +226,7 @@ class VisionThread(threading.Thread):
                 # If Calibration is needed, collect data
                 calibration = False
 
+                # Save images for Calibration
                 if (calibration):
                     img_name1 = os.getcwd() + "\calibration\cam_0_images\cam_0_frame_{}.png".format(self.img_counter)
                     img_name2 = os.getcwd() + "\calibration\cam_1_images\cam_1_frame_{}.png".format(self.img_counter)
@@ -201,24 +243,31 @@ class VisionThread(threading.Thread):
                 cv2.imwrite(img_name, right)
                 rightName = img_name
 
+                # Read Left and right Images
                 imgL = cv2.imread(leftName)
                 imgR = cv2.imread(rightName)
                 
+                # Convert images to arrays
                 imgL = np.array(imgL, dtype=np.uint8)
                 imgR = np.array(imgR, dtype=np.uint8)
 
+                # Get the sizes of the images
                 leftHeight, leftWidth = imgL.shape[:2]
                 rightHeight, rightWidge = imgR.shape[:2]
 
+                # Apply the calibration
                 calImgL = cv2.remap(imgL, self.leftMapX, self.leftMapY, REMAP_INTERPOLATION)
                 calImgR = cv2.remap(imgR, self.rightMapX, self.rightMapY, REMAP_INTERPOLATION)
 
+                # Convert the calibration to an array
                 calImgL = np.array(calImgL, dtype=np.uint8)
                 calImgR = np.array(calImgR, dtype=np.uint8)
 
+                # Grayscale the images
                 gLeft = cv2.cvtColor(calImgL, cv2.COLOR_BGR2GRAY)
                 gRight = cv2.cvtColor(calImgR, cv2.COLOR_BGR2GRAY)
 
+                # compute a depth map from the images
                 depthMap = self.stereoMatcher.compute(gLeft, gRight)
 
                 #cv2.imshow('depthMap', depthMap / DEPTH_VISUALIZATION_SCALE)
@@ -226,7 +275,7 @@ class VisionThread(threading.Thread):
                 self.img_counter = self.img_counter + 1
 
                 
-
+                # Possible temporary code
                 """
                 system = PySpin.System_GetInstance()
                 cam_list = system.get_stereo_images
@@ -293,6 +342,10 @@ class VisionThread(threading.Thread):
                 self._depth_map_thread.terminate_thread()
                 self._depth_map_thread.join()
 
+    """
+    Process the camera results
+    self - the self of the thread
+    """
     def _process_results(self):
         """
         Process results from the camera
@@ -316,6 +369,14 @@ class VisionThread(threading.Thread):
         with self._item_list_lock:
             self._item_list = items
 
+    """
+    Set the settings of the  thread's visual settings
+    self - the self of the thread
+    label_to_show - The name of the object to highlight. ALL - All objects are highlighted
+    max_labels - The maximum number of objects to highlight
+    display_class_name - True - display the names of the all highlighted objects
+    display_score - True - Display the prediction score of all highlighted objects
+    """
     def set_visualization_settings(self, display_results, label_to_show, max_labels, display_class_name, display_score):
         """
         Configure the OpenCV live image display
@@ -333,6 +394,11 @@ class VisionThread(threading.Thread):
             self._display_class_name = display_class_name
             self._display_score = display_score
 
+    """
+    Display the live display of highlighting
+    self - the self of the thread
+    image - image to be shown
+    """
     def _display_machine_learning_result(self, image):
         """
         Internal facing function to update the live display
@@ -350,7 +416,7 @@ class VisionThread(threading.Thread):
             cv2.imshow('GM Pick-Point', result)
             cv2.waitKey(1)                      # DO NOT REMOVE: For some reason this works
 
-
+# Logging Parameters
 if __name__ == '__main__':
     # =================================
     # Setup Logging

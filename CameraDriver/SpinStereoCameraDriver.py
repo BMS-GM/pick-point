@@ -5,6 +5,10 @@ Michigan  Technological University: Blue Marble Security Enterprise
 --------------------------------------------------------------------
 
 Driver to connect to a stereo pair of Spinnaker compatible cameras
+
+SpinStereoCameraThread.py
+Author: Shaun Flynn
+Date Last Modified 4/23/2019
 """
 
 __author__ = 'Blue Marble Security Enterprise'

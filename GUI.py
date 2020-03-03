@@ -4,7 +4,9 @@
 Michigan  Technological University: Blue Marble Security Enterprise
 --------------------------------------------------------------------
 
-Class for GUI
+GUI.py
+Author: Max Hoglund
+Date Last Modified: 4/23/19
 """
 
 __author__ = 'Blue Marble Security Enterprise'

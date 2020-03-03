@@ -5,6 +5,10 @@ Michigan  Technological University: Blue Marble Security Enterprise
 --------------------------------------------------------------------
 
 Class to create a separate thread to run TF models in
+
+MachineLearningThread.py
+Author: Shaun Flynn
+Date Last Modified 9/25/2019
 """
 
 __author__ = 'Blue Marble Security Enterprise'
