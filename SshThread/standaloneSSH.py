@@ -13,7 +13,6 @@ Date last modified: 9/16/20
 __author__ = 'Blue Marble Security Enterprise'
 __version__ = '1.0'
 
-import base64
 import paramiko
 import sys
 
