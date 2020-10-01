@@ -1,0 +1,110 @@
+"""
+--------------------------------------------------------------------
+Michigan  Technological University: Blue Marble Security Enterprise
+--------------------------------------------------------------------
+
+listener.py
+Author: Corbin Holz
+Date Created: 10/1/2020
+Date Last Modified: 10/1/2020
+"""
+
+__author__ = 'Blue Marble Security Enterprise'
+__version__ = '1.0'
+
+import sys
+import math
+from niryo_one_python_api.niryo_one_api import *
+import rospy
+
+# Initialize the robotic arm
+rospy.init_node('niryo_one_example_python_api')
+robot = NiryoOne()
+
+# Listener needs to loop
+listening = 1
+
+# Percent of speed
+max_velocity = 30
+
+# Speed between 0-1000
+max_grip_speed = 300
+
+# Calibrate the Arm
+robot.calibrate_auto()
+robot.set_arm_max_velocity(max_velocity)
+
+# Set the TOOL ID
+"""
+TOOL_NONE
+TOOL_GRIPPER_1_ID - 
+TOOL_GRIPPER_2_ID - 
+TOOL_GRIPPER_3_ID - Adaptive Gripper
+TOOL_ELECTROMAGNET_1_ID
+TOOL_VACUUM_PUMP_1_ID
+"""
+robot.change_tool(TOOL_GRIPPER_3_ID)
+
+try:
+    while (listening):
+        # For every loop, wait for commands
+        print("WAIT", file = sys.stdout)
+        command = input()
+
+        # Split the command into partitions
+        # ie. [command] [arg1] [arg2] etc.
+        command = list(command.split(" "))
+
+        # If move command, collect specified variables and move
+        if (command[0] == "MOVE"):
+            x_val = float(command[1])
+            y_val = float(command[2])
+            z_val = float(command[3])
+            roll_val = math.radians(int(command[4]))
+            pitch_val = math.radians(int(command[5]))
+            yaw_val = math.radians(int(command[6]))
+            robot.move_pose(x = x_val, y = y_val, z = z_val, roll = roll_val, pitch = pitch_val, yaw = yaw_val)
+
+        # If shift command, shift along specified axis
+        elif (command[0] == "SHIFT"):
+            spec_axis = command[1]
+            shiftBy = 0
+            if (spec_axis == "x" or spec_axis == "y" or spec_axis == "z"):
+                shiftBy = float(command[2])
+                if spec_axis is "x":
+                    robot.shift_pose(AXIS_X, shiftBy)
+
+                elif spec_axis is "y":
+                    robot.shift_pose(AXIS_Y, shiftBy)
+
+                elif spec_axis is "z":
+                    robot.shift_pose(AXIS_Z, shiftBy)
+
+            else:
+                shiftBy = math.radians(int(command[2]))
+                if spec_axis is "roll":
+                    robot.shift_pose(ROT_ROLL, shiftBy)
+
+                elif spec_axis is "pitch":
+                    robot.shift_pose(ROT_PITCH, shiftBy)
+
+                elif spec_axis is "yaw":
+                    robot.shift_pose(ROT_YAW, shiftBy)
+            
+        # If open command, open the effector
+        elif (command[0] == "OPEN"):
+            robot.open_gripper(get_current_tool_id(), max_grip_speed)
+
+        # If close command, close the effector
+        elif (command[0] == "CLOSE"):
+            robot.close_gripper(get_current_tool_id(), max_grip_speed)
+
+        # If quit, stop listening, end program
+        elif (command[0] == "QUIT"):
+            listening = 0
+
+        # When Done print to standard out
+        print("DONE", file = sys.stdout)
+
+except NiryoOneException as e:
+    print e
