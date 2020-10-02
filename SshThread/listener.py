@@ -6,7 +6,7 @@ Michigan  Technological University: Blue Marble Security Enterprise
 listener.py
 Author: Corbin Holz
 Date Created: 10/1/2020
-Date Last Modified: 10/1/2020
+Date Last Modified: 10/2/2020
 """
 
 __author__ = 'Blue Marble Security Enterprise'
@@ -23,6 +23,9 @@ robot = NiryoOne()
 
 # Listener needs to loop
 listening = 1
+
+# How long to wait during wait calls (seconds)
+sleep_time = 1
 
 # Percent of speed
 max_velocity = 30
@@ -50,6 +53,8 @@ try:
         # For every loop, wait for commands
         print("WAIT", file = sys.stdout)
         command = input()
+
+        print("BUSY", file = sys.stdout)
 
         # Split the command into partitions
         # ie. [command] [arg1] [arg2] etc.
@@ -99,6 +104,34 @@ try:
         elif (command[0] == "CLOSE"):
             robot.close_gripper(get_current_tool_id(), max_grip_speed)
 
+        # If PICK command open the effector, move, and close the effector
+        elif (command[0] == "PICK"):
+            robot.open_gripper(get_current_tool_id(), max_grip_speed)
+
+            x_val = float(command[1])
+            y_val = float(command[2])
+            z_val = float(command[3])
+            roll_val = math.radians(int(command[4]))
+            pitch_val = math.radians(int(command[5]))
+            yaw_val = math.radians(int(command[6]))
+            robot.move_pose(x = x_val, y = y_val, z = z_val, roll = roll_val, pitch = pitch_val, yaw = yaw_val)
+
+            robot.close_gripper(get_current_tool_id(), max_grip_speed)
+
+        # If drop command move arm, open effector, close effector
+        elif (command[0] == "DROP"):
+            x_val = float(command[1])
+            y_val = float(command[2])
+            z_val = float(command[3])
+            roll_val = math.radians(int(command[4]))
+            pitch_val = math.radians(int(command[5]))
+            yaw_val = math.radians(int(command[6]))
+            robot.move_pose(x = x_val, y = y_val, z = z_val, roll = roll_val, pitch = pitch_val, yaw = yaw_val)
+            
+            robot.open_gripper(get_current_tool_id(), max_grip_speed)
+            robot.wait(sleep_time)
+            robot.close_gripper(get_current_tool_id(), max_grip_speed)
+
         # If quit, stop listening, end program
         elif (command[0] == "QUIT"):
             listening = 0
@@ -107,4 +140,4 @@ try:
         print("DONE", file = sys.stdout)
 
 except NiryoOneException as e:
-    print e
+    print (e)
