@@ -133,7 +133,7 @@ np.savez(calibrationDetailsPath, allObjPoints=objpoints, imgpoints1=imgpoints1, 
 print("Right Calibration Created")
 
 # Create a stereo calibration and save it
-ret, camMtx1, dist1, camMtx2, distcoeff2, R, T, E, F = cv2.stereoCalibrate(allObjPoints, imgpoints1, imgpoints2, size, mtx1, dist1, mtx2, dist2, None, None, None, None, cv2.CALIB_FIX_INTRINSIC, tuple(criteria))
+ret, camMtx1, dist1, camMtx2, dist2, R, T, E, F = cv2.stereoCalibrate(allObjPoints, imgpoints1, imgpoints2, tuple(size), mtx1, dist1, mtx2, dist2)
 fullCalibrationPath = os.getcwd() + '/calibration/fullCalibration.npz'
 np.savez(fullCalibrationPath, ret=ret, camMtx1=camMtx1, camMtx2=camMtx2, dist1=dist1, dist2=dist2, R=R, T=T, E=E, F=F)
 
@@ -143,12 +143,12 @@ rightCal = np.load(rightCalibrationPath)
 print("Calibrations Loaded")
 
 # Left Camera Image Load and apply the Calibration
-img = cv2.imread('/home/crholz/Documents/GitHub/pick-point/calibration/cam_0_images/cam_0_frame_17.png')
+img = cv2.imread(os.getcwd() + '/calibration/cam_0_images/cam_0_frame_17.png')
 h,  w = img.shape[:2]
 leftcameramtx, Lroi=cv2.getOptimalNewCameraMatrix(leftCal['mtx'], leftCal['dist'],(w,h),1,(w,h))
 
 # Right Camera Image Load and apply the Calibration
-img = cv2.imread('/home/crholz/Documents/GitHub/pick-point/calibration/cam_1_images/cam_1_frame_17.png')
+img = cv2.imread(os.getcwd() + '/calibration/cam_1_images/cam_1_frame_17.png')
 h,  w = img.shape[:2]
 rightcameramtx, Rroi=cv2.getOptimalNewCameraMatrix(rightCal['mtx'], rightCal['dist'],(w,h),1,(w,h))
 
