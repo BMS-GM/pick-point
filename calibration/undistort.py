@@ -41,13 +41,13 @@ OPTIMIZE_ALPHA = -1
 
 # Left Camera
 #img = cv2.imread(os.getcwd() + '/calibration/testLeft.png')
-img = cv2.imread(os.getcwd() + '/calibration/leftBoard.png')
+img = cv2.imread(os.getcwd() + '/calibration/leftNew.png')
 h,  w = img.shape[:2]
 Lnewcameramtx, Lroi=cv2.getOptimalNewCameraMatrix(cameraMatrix1, distCoeffs1,(w,h),1,(w,h))
 
 # Right Camera
 #img = cv2.imread(os.getcwd() + '/calibration/testRight.png')
-img = cv2.imread(os.getcwd() + '/calibration/rightBoard.png')
+img = cv2.imread(os.getcwd() + '/calibration/rightNew.png')
 h,  w = img.shape[:2]
 Rnewcameramtx, Rroi=cv2.getOptimalNewCameraMatrix(cameraMatrix2, distCoeffs2,(w,h),1,(w,h))
 
@@ -70,27 +70,25 @@ np.savez_compressed(testCal, imageSize=thisSize,
 
 
 print("Calibrations Loaded")
-print(R)
-"""
+
 # Left Camera
-#img = cv2.imread(os.getcwd() + '/calibration/testLeft.png')
-img = cv2.imread(os.getcwd() + '/calibration/leftBoard.png')
-h,  w = img.shape[:2]
+img1 = cv2.imread(os.getcwd() + '/calibration/leftNew.png')
+img2 = cv2.imread(os.getcwd() + '/calibration/rightNew.png')
+h,  w = img1.shape[:2]
 newcameramtx, roi=cv2.getOptimalNewCameraMatrix(cameraMatrix1, distCoeffs1,(w,h),1,(w,h))
 
 # undistort
-dst = cv2.undistort(img, cameraMatrix1, distCoeffs1, None, newcameramtx)
+dst = cv2.undistort(img1, cameraMatrix1, distCoeffs1, None, newcameramtx)
 print("Undistort Left")
 
 x,y,w,h = roi
 ldst = dst[y:y+h, x:x+w]
 
 # crop the image
-#h,  w = img.shape[:2]
 newcameramtx, roi=cv2.getOptimalNewCameraMatrix(cameraMatrix2, distCoeffs2,(w,h),1,(w,h))
 
 # undistort
-dst = cv2.undistort(img, cameraMatrix2, distCoeffs2, None, newcameramtx)
+dst = cv2.undistort(img2, cameraMatrix2, distCoeffs2, None, newcameramtx)
 print("Undistort Right")
 
 # crop the image
@@ -103,14 +101,12 @@ cv2.imwrite(os.getcwd() + '/calibration/rightImg.png', rdst)
 
 myLeft = os.getcwd() + '/calibration/leftImg.png'
 myRight = os.getcwd() + '/calibration/rightImg.png'
-"""
-myLeft = os.getcwd() + '/calibration/leftBoard.png'
-myRight = os.getcwd() + '/calibration/rightBoard.png'
+
 # Test Depth Map
 imgL = cv2.imread(myLeft,0)
 imgR = cv2.imread(myRight,0)
 
-stereo = cv2.StereoBM_create(numDisparities=128, blockSize=15)
+stereo = cv2.StereoBM_create(numDisparities=16, blockSize=5)
 disparity = stereo.compute(imgL,imgR)
 plt.imshow(disparity,'gray')
 plt.show()
