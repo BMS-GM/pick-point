@@ -75,16 +75,20 @@ print("Calibrations Loaded")
 img1 = cv2.imread(os.getcwd() + '/calibration/leftNew.png')
 img2 = cv2.imread(os.getcwd() + '/calibration/rightNew.png')
 h,  w = img1.shape[:2]
-newcameramtx, roi=cv2.getOptimalNewCameraMatrix(cameraMatrix1, distCoeffs1,(w,h),1,(w,h))
+newcameramtx, roi=cv2.getOptimalNewCameraMatrix(cameraMatrix2, distCoeffs2,(w,h),1,(w,h))
 
 # undistort
-dst = cv2.undistort(img1, cameraMatrix1, distCoeffs1, None, newcameramtx)
+dst = cv2.undistort(img1, cameraMatrix2, distCoeffs2, None, newcameramtx)
+plt.imshow(dst)
 print("Undistort Left")
 
+print("roi: " + str(roi))
 x,y,w,h = roi
 ldst = dst[y:y+h, x:x+w]
+ldst = ldst[125:800, 150:950]
 
 # crop the image
+h,  w = img2.shape[:2]
 newcameramtx, roi=cv2.getOptimalNewCameraMatrix(cameraMatrix2, distCoeffs2,(w,h),1,(w,h))
 
 # undistort
@@ -92,7 +96,10 @@ dst = cv2.undistort(img2, cameraMatrix2, distCoeffs2, None, newcameramtx)
 print("Undistort Right")
 
 # crop the image
+print("roi: " + str(roi))
+x,y,w,h = roi
 rdst = dst[y:y+h, x:x+w]
+rdst = rdst[125:800, 150:950]
 
 print("Create Depth Map")
 
