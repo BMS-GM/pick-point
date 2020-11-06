@@ -21,7 +21,7 @@ import copy
 import cv2
 import skimage
 import os
-from pyspin import PySpin
+import PySpin
 from matplotlib import pyplot as plt
 import sys
 import datetime

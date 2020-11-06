@@ -21,7 +21,7 @@ import logging
 import copy
 
 import cv2 as cv2
-import pyspin.PySpin as pyspin
+import PySpin
 import os
 from matplotlib import pyplot
 from CameraDriver.SpinCameraDriver import SpinCameraDriver
