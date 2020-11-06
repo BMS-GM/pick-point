@@ -103,6 +103,7 @@ class VisionThread(threading.Thread):
         self._item_list_lock = threading.Lock()
 
         # load camera calibration
+        """
         self.calibration = np.load(os.getcwd() + '/calibration/calibration.npz')
         if (self.calibration):
             print("Calibration Loaded")
@@ -123,6 +124,7 @@ class VisionThread(threading.Thread):
         self.stereoMatcher.setROI2(self.rightROI)
         #self.stereoMatcher.setSpeckleRange(16)
         #self.stereoMatcher.setSpeckleWindowSize(45)
+        """
 
         self._logger.debug('Threads Initialized')
 
@@ -246,7 +248,7 @@ class VisionThread(threading.Thread):
                 # Read Left and right Images
                 imgL = cv2.imread(leftName)
                 imgR = cv2.imread(rightName)
-                
+                """
                 # Convert images to arrays
                 imgL = np.array(imgL, dtype=np.uint8)
                 imgR = np.array(imgR, dtype=np.uint8)
@@ -269,8 +271,9 @@ class VisionThread(threading.Thread):
 
                 # compute a depth map from the images
                 depthMap = self.stereoMatcher.compute(gLeft, gRight)
+                """
 
-                #cv2.imshow('depthMap', depthMap / DEPTH_VISUALIZATION_SCALE)
+                #cv2.imshow('depthMap', imgL)
 
                 self.img_counter = self.img_counter + 1
 
