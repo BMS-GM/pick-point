@@ -17,6 +17,9 @@ import cv2
 from matplotlib import pyplot as plt
 import os
 
+LEFT_PATH = os.getcwd() + '/calibration/closeLeft.png'
+RIGHT_PATH = os.getcwd() + '/calibration/closeRight.png'
+
 # Instantiate Paths
 leftCalibrationPath = os.getcwd() + '/calibration/cam_0_images/leftCal.npz'
 rightCalibrationPath = os.getcwd() + '/calibration/cam_1_images/rightCal.npz'
@@ -41,13 +44,13 @@ OPTIMIZE_ALPHA = -1
 
 # Left Camera
 #img = cv2.imread(os.getcwd() + '/calibration/testLeft.png')
-img = cv2.imread(os.getcwd() + '/calibration/leftNew.png')
+img = cv2.imread(LEFT_PATH)
 h,  w = img.shape[:2]
 Lnewcameramtx, Lroi=cv2.getOptimalNewCameraMatrix(cameraMatrix1, distCoeffs1,(w,h),1,(w,h))
 
 # Right Camera
 #img = cv2.imread(os.getcwd() + '/calibration/testRight.png')
-img = cv2.imread(os.getcwd() + '/calibration/rightNew.png')
+img = cv2.imread(RIGHT_PATH)
 h,  w = img.shape[:2]
 Rnewcameramtx, Rroi=cv2.getOptimalNewCameraMatrix(cameraMatrix2, distCoeffs2,(w,h),1,(w,h))
 
@@ -72,8 +75,8 @@ np.savez_compressed(testCal, imageSize=thisSize,
 print("Calibrations Loaded")
 
 # Left Camera
-img1 = cv2.imread(os.getcwd() + '/calibration/leftNew.png')
-img2 = cv2.imread(os.getcwd() + '/calibration/rightNew.png')
+img1 = cv2.imread(LEFT_PATH)
+img2 = cv2.imread(RIGHT_PATH)
 h,  w = img1.shape[:2]
 newcameramtx, roi=cv2.getOptimalNewCameraMatrix(cameraMatrix2, distCoeffs2,(w,h),1,(w,h))
 
@@ -85,7 +88,7 @@ print("Undistort Left")
 print("roi: " + str(roi))
 x,y,w,h = roi
 ldst = dst[y:y+h, x:x+w]
-ldst = ldst[125:800, 150:950]
+#ldst = ldst[150:700, 150:950]
 
 # crop the image
 h,  w = img2.shape[:2]
@@ -99,7 +102,7 @@ print("Undistort Right")
 print("roi: " + str(roi))
 x,y,w,h = roi
 rdst = dst[y:y+h, x:x+w]
-rdst = rdst[125:800, 150:950]
+#rdst = rdst[150:700, 150:950]
 
 print("Create Depth Map")
 
