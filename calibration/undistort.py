@@ -118,5 +118,6 @@ imgR = cv2.imread(myRight,0)
 
 stereo = cv2.StereoBM_create(numDisparities=16, blockSize=5)
 disparity = stereo.compute(imgL,imgR)
-plt.imshow(disparity,'gray')
+de_noised = cv2.fastNlMeansDenoising(disparity, None, 10, 10, 7, 21)
+plt.imshow(de_noised,'gray')
 plt.show()
