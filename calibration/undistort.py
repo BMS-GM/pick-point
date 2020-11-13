@@ -88,7 +88,7 @@ print("Undistort Left")
 print("roi: " + str(roi))
 x,y,w,h = roi
 ldst = dst[y:y+h, x:x+w]
-#ldst = ldst[150:700, 150:950]
+ldst = ldst[150:700, 150:950]
 
 # crop the image
 h,  w = img2.shape[:2]
@@ -102,7 +102,7 @@ print("Undistort Right")
 print("roi: " + str(roi))
 x,y,w,h = roi
 rdst = dst[y:y+h, x:x+w]
-#rdst = rdst[150:700, 150:950]
+rdst = rdst[150:700, 150:950]
 
 print("Create Depth Map")
 
@@ -116,8 +116,10 @@ myRight = os.getcwd() + '/calibration/rightImg.png'
 imgL = cv2.imread(myLeft,0)
 imgR = cv2.imread(myRight,0)
 
-stereo = cv2.StereoBM_create(numDisparities=16, blockSize=5)
+stereo = cv2.StereoBM_create(numDisparities=128, blockSize=25)
 disparity = stereo.compute(imgL,imgR)
-de_noised = cv2.fastNlMeansDenoising(disparity, None, 10, 10, 7, 21)
-plt.imshow(de_noised,'gray')
+disparity = np.uint8(disparity)
+cv2.imwrite(os.getcwd() + '/calibration/depthmap.png', disparity)
+#de_noised = cv2.fastNlMeansDenoising(src = disparity, dst = None, h = 8, templateWindowSize = 7, searchWindowSize = 21)
+plt.imshow(disparity,'gray')
 plt.show()
