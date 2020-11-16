@@ -6,7 +6,7 @@ Michigan  Technological University: Blue Marble Security Enterprise
 undistort.py - Testing File
 Quickly test the calibrations
 
-Author: Corbin Holz
+Author: Corbin Holz, Max Hoglund, Will Collicot
 Author: https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.html#calibration
 Author: https://gist.github.com/aarmea/629e59ac7b640a60340145809b1c9013
 Date Last Modified 3/3/2019
@@ -17,8 +17,8 @@ import cv2
 from matplotlib import pyplot as plt
 import os
 
-LEFT_PATH = os.getcwd() + '/calibration/closeLeft.png'
-RIGHT_PATH = os.getcwd() + '/calibration/closeRight.png'
+LEFT_PATH = os.getcwd() + '/calibration/tripleL.png'
+RIGHT_PATH = os.getcwd() + '/calibration/tripleR.png'
 
 # Instantiate Paths
 leftCalibrationPath = os.getcwd() + '/calibration/cam_0_images/leftCal.npz'
@@ -88,7 +88,7 @@ print("Undistort Left")
 print("roi: " + str(roi))
 x,y,w,h = roi
 ldst = dst[y:y+h, x:x+w]
-ldst = ldst[150:700, 150:950]
+ldst = ldst[250:675, 125:950]
 
 # crop the image
 h,  w = img2.shape[:2]
@@ -102,24 +102,26 @@ print("Undistort Right")
 print("roi: " + str(roi))
 x,y,w,h = roi
 rdst = dst[y:y+h, x:x+w]
-rdst = rdst[150:700, 150:950]
+rdst = rdst[250:675, 125:950]
 
 print("Create Depth Map")
 
-cv2.imwrite(os.getcwd() + '/calibration/leftImg.png', ldst)
-cv2.imwrite(os.getcwd() + '/calibration/rightImg.png', rdst)
+cv2.imwrite(os.getcwd() + '/calibration/outputL.png', ldst)
+cv2.imwrite(os.getcwd() + '/calibration/outputR.png', rdst)
 
-myLeft = os.getcwd() + '/calibration/leftImg.png'
-myRight = os.getcwd() + '/calibration/rightImg.png'
+myLeft = os.getcwd() + '/calibration/outputL.png'
+myRight = os.getcwd() + '/calibration/outputR.png'
 
 # Test Depth Map
 imgL = cv2.imread(myLeft,0)
 imgR = cv2.imread(myRight,0)
 
-stereo = cv2.StereoBM_create(numDisparities=128, blockSize=25)
+stereo = cv2.StereoBM_create(numDisparities=48, blockSize=29)
 disparity = stereo.compute(imgL,imgR)
-disparity = np.uint8(disparity)
+#disparity = np.uint8(disparity)
 cv2.imwrite(os.getcwd() + '/calibration/depthmap.png', disparity)
 #de_noised = cv2.fastNlMeansDenoising(src = disparity, dst = None, h = 8, templateWindowSize = 7, searchWindowSize = 21)
+plt.imshow(imgL)
+plt.imshow(imgR)
 plt.imshow(disparity,'gray')
 plt.show()
