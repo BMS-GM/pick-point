@@ -6,7 +6,7 @@ Michigan  Technological University: Blue Marble Security Enterprise
 undistort.py - Testing File
 Quickly test the calibrations
 
-Author: Corbin Holz, Max Hoglund, Will Collicot
+Author: Corbin Holz, Max Hoglund, Will Collicott
 Author: https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_calib3d/py_calibration/py_calibration.html#calibration
 Author: https://gist.github.com/aarmea/629e59ac7b640a60340145809b1c9013
 Date Last Modified 3/3/2019
@@ -124,4 +124,4 @@ cv2.imwrite(os.getcwd() + '/calibration/depthmap.png', disparity)
 plt.imshow(imgL)
 plt.imshow(imgR)
 plt.imshow(disparity,'gray')
-plt.show()
+#plt.show()
