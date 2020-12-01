@@ -51,9 +51,6 @@ class SSHThread(threading.Thread):
         # Exec the python script
         stdin, stdout, stderr = self.client.exec_command('source ~/catkin_ws/devel/setup.bash && export PYTHONPATH=${PYTHONPATH}:/home/niryo/catkin_ws/src/niryo_one_python_api/src/niryo_python_api && python listener.py')
 
-        # Commands read in should be FIFO
-        command_stack_pos = 0
-
         # Write commands
         userIn = ""
         while (userIn != "QUIT"):
@@ -65,14 +62,13 @@ class SSHThread(threading.Thread):
                 time.sleep(1)
                 output = stdout.readlines()
 
-            # Wait for commands
-            while (command_stack_pos < len(self._command_list)):
+            # Wait for commands (loop if empty)
+            while (not self._command_list):
                 time.sleep(1)
 
-            stdin.write(command_list[command_stack_pos])
+            # FIFO commands
+            stdin.write(self._command_list.pop(0))
             stdin.flush()
-
-            command_stack_pos = command_stack_pos + 1
 
                 
         self.client.close()
