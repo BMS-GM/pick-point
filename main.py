@@ -35,8 +35,8 @@ GRAPH_TYPE = 'SSD_INCEPTION_V2'         # Network graph model to use for object 
 INCHES_PER_PIXEL = 0.015735782          # Number of inches each pixel represents at the datum
 IMAGE_DOWNSCALE_RATIO = 0.5             # Downscale ratio for machine learning
 ARM_CONSTANT = 0.00062927
-OPERATING_BOX_X = 0.15
-OPERATING_BOX_Y = -0.23
+OPERATING_BOX_Y = 0.15
+OPERATING_BOX_X = -0.23
                                         #    1  = process the full image (more accurate)
                                         #    <1 = process a smaler version of the image (faster)
 
@@ -205,8 +205,8 @@ class Main:
                         item_y = self._vision_thread._get_y()
 
                         # Translate to arm coordinates
-                        arm_x = item_x * ARM_CONSTANT
-                        arm_y = item_y * ARM_CONSTANT
+                        arm_x = (item_x * ARM_CONSTANT) + OPERATING_BOX_X
+                        arm_y = (item_y * ARM_CONSTANT) + OPERATING_BOX_Y
 
                         if (arm_x not None and arm_y not None):
                             # PICK X Y Z ROLL PITCH YAW
