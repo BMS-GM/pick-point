@@ -83,6 +83,8 @@ class VisionThread(threading.Thread):
         self._downscale_ratio = downscale_ratio
         self._average_time = 0.0
         self._iteration = -1        # Skip the first Frame (first frame includes load time)
+        self._current_x = None
+        self._current_y = None
 
         self._logger.debug('Initializing Depth Map Thread')
         self._depth_map_thread = None
@@ -317,6 +319,9 @@ class VisionThread(threading.Thread):
 
                 self._process_results()
 
+                self._current_x = Network.get_img_x()
+                self._current_y = Network.get_img_y()
+
                 with self._visualization_settings_lock:
                     if self._display_results:
                         self._display_machine_learning_result(left)
@@ -418,6 +423,14 @@ class VisionThread(threading.Thread):
                 cv2.putText(result, '%0.4f seconds/frame' % self._average_time, (0, 30), font, 1, (255, 255, 255), 1, cv2.LINE_AA)
             cv2.imshow('GM Pick-Point', result)
             cv2.waitKey(1)                      # DO NOT REMOVE: For some reason this works
+
+    @staticmethod
+    def _get_x():
+        return self._current_x
+
+    @staticmethod
+    def _get_y():
+        return self._current_y
 
 # Logging Parameters
 if __name__ == '__main__':

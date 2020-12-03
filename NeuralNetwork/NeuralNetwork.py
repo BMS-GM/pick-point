@@ -8,7 +8,8 @@ Generic Neural Network Class
 
 NeuralNetwork.py
 Author: Shaun Flynn
-Date Last Modified 4/23/2019
+Last Modified By: Corbin Holz
+Date Last Modified 12/1/2020
 """
 
 __author__ = 'Blue Marble Security Enterprise'
@@ -50,6 +51,8 @@ class Network:
             self._graph_def = tf.GraphDef()
             self._graph_def.ParseFromString(f.read())
         self._logger.info('Reading in Graph - COMPLETE')
+        self._current_image_x = None
+        self._current_image_y = None
 
         self._logger.info('Restoring Graph...')
         self._init_session()
@@ -144,6 +147,14 @@ class Network:
         return result
 
     @staticmethod
+    def get_img_x():
+        return self._current_image_x
+
+    @staticmethod
+    def get_img_y():
+        return self._current_image_y
+
+    @staticmethod
     def get_item_locations(network_output):
         result = []
         num_detections = int(network_output[0][0])
@@ -190,7 +201,14 @@ class Network:
                 right = bbox[3] * cols
                 bottom = bbox[2] * rows
                 cv2.rectangle(result_img, (int(x), int(y)), (int(right), int(bottom)), (125, 255, 51), thickness=2)
-                print("X: {}  Y: {}".format(x, y))
+
+                # Find center of the rectangle
+                self._current_image_x = int((int(x) + int(right)) / 2)
+                self._current_image_y = int((int(y) + int(bottom)) / 2)
+
+                cv2.circle(iamge, (self._current_image_x, self._current_image_y), radius = 0, color = (125, 255, 51), thickness = -1)
+
+                print("X: {}  Y: {}".format(self._current_image_x, self._current_image_y))
 
                 if display_class_name:
                     class_name = LABEL_MAP_BY_ID[class_id]

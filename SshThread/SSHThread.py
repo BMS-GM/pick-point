@@ -7,7 +7,7 @@ SSHThread.py
 Code Based on Demo: https://github.com/paramiko/paramiko/
 
 Author: Corbin Holz
-Date last modified: 10/2/20
+Date last modified: 12/1/2020
 """
 
 __author__ = 'Blue Marble Security Enterprise'
@@ -30,6 +30,7 @@ class SSHThread(threading.Thread):
         self.hostname = 'localhost'
         self.user = 'niryo'
         self.userpass = 'robotics'
+        self._command_list = []
 
         # Since SSH allows for secure connections with keys, allow to auto accept keys without passwords
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -50,36 +51,33 @@ class SSHThread(threading.Thread):
         # Exec the python script
         stdin, stdout, stderr = self.client.exec_command('source ~/catkin_ws/devel/setup.bash && export PYTHONPATH=${PYTHONPATH}:/home/niryo/catkin_ws/src/niryo_one_python_api/src/niryo_python_api && python listener.py')
 
-        # Instantiate command file
-        command_log = None
-        # Only read from commands log if manual flag
-        command_log = open("commands.log", "r")
-
-        # Commands read in should be FIFO
-        command_stack_pos = 0
-
         # Write commands
         userIn = ""
         while (userIn != "QUIT"):
             # Wait until "WAIT" is recieved
             output = stdout.readlines()
             while (output[-1] != "WAIT"):
-                # Don't pull as soon as possible for performance
-                # Only pull every second
+                # Don't poll as soon as possible for performance
+                # Only poll every second
                 time.sleep(1)
                 output = stdout.readlines()
 
-            command_list = command_log.readlines()
-            # Wait for commands
-            while (command_stack_pos >= len(command_list)):
+            # Wait for commands (loop if empty)
+            while (not self._command_list):
                 time.sleep(1)
-                command_list = command_log.readlines()
 
-            stdin.write(command_list[command_stack_pos])
+            # FIFO commands
+            stdin.write(self._command_list.pop(0))
             stdin.flush()
-
-            command_stack_pos = command_stack_pos + 1
 
                 
         self.client.close()
-        command_log.close()
+
+    """
+    _append_command
+    Appends passed command to the command list
+    input: new_command
+    """
+    def _append_command(new_command):
+        if (new_command not in self._command_list):
+            self._command_list.append(new_command)
