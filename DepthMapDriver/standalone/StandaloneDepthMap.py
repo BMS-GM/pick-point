@@ -10,17 +10,10 @@ Date Last Modified 11/25/2020
 """
 
 import cv2
-from matplotlib import pyplot as plt
-import os
 
 
-def get_depth(imgL, imgR, x, y):
-    stereo = cv2.StereoBM_create(numDisparities=48, blockSize=29)
-    disparity = stereo.compute(imgL, imgR)
-    z = disparity[y][x]
-    cv2.imwrite(os.getcwd() + '/depthmap.png', disparity)
-    plt.imshow(imgL)
-    plt.imshow(imgR)
-    plt.imshow(disparity, 'gray')
-    return z
+def initialize_depth_map(imgL, imgR, numDisparities, blockSize):
+    stereo = cv2.StereoBM_create(numDisparities=numDisparities, blockSize=blockSize)
+    return stereo.compute(imgL, imgR)
+
 
