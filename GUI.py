@@ -5,8 +5,8 @@ Michigan  Technological University: Blue Marble Security Enterprise
 --------------------------------------------------------------------
 
 GUI.py
-Author: Max Hoglund
-Date Last Modified: 4/23/19
+Author: Max Hoglund, Alek Ertman
+Date Last Modified: 12/2/20
 """
 
 __author__ = 'Blue Marble Security Enterprise'
@@ -109,7 +109,7 @@ class GUI(threading.Thread):
 
         # Setup Window
         self._root.title("pick-point")  # Set title
-        self._root.geometry("400x700")  # Set fixed resolution to 1400x700
+        self._root.geometry("400x1100")  # Set fixed resolution to 400x1100
         self._root.resizable(0, 0)  # Don't allow resizing
         self._root.configure(background="gray")
 
@@ -147,9 +147,26 @@ class GUI(threading.Thread):
         self._result = tk.Label(self._root, bg="white", text="", font=self._FONT, fg="white")
         self._result.grid(row=4, columnspan=2, pady=10)
 
+        # Arm Speed Label
+        self._speed_static = tk.Label(self._root, bg=self._BG, text="Arm Speed %:", font=self._FONT, anchor="w")
+        self._speed_static.grid(row=5, column=0)
+
+        # Arm Speed Slider
+        self._arm_speed_percentage = tk.IntVar()
+        self._speed = tk.Scale(self._root, bg=self.BG, font=self._FONT, orient=HORIZONTAL, from_=0, to=100,
+                               variable=self._arm_speed_percentage, resolution=5)
+        self._speed.grid(row=5, column=1)
+
+        # Stop Button
+        self._stop_button_text = tk.StringVar()
+        self._stop_button = tk.Button(self._root, bg="gray20", text=self._stop_button_text, font=self._FONT,
+                                       fg="white", width=8, command=self._button_stop)
+        self._next_button_text.set("Stop")
+        self._stop_button.grid(row=6, columnspan=2)
+
         # Log Label
         self._log = tk.Label(self._root, bg=self._BG, font=("Times", 14), text="Log:", anchor="w")
-        self._log.grid(row=5, columnspan=2, pady=10)
+        self._log.grid(row=7, columnspan=2, pady=10)
         self._logger.debug('Setting Up GUI - COMPLETE')
 
     def set_result(self, status, error='Unknown Error', item='None', placement='None', x=0, y=0, z=0):
@@ -241,7 +258,7 @@ class GUI(threading.Thread):
 
     def _button_update(self):
         """
-        Function called byt he update button
+        Function called by the update button
         """
         self._next_object_request_event.set()
 
@@ -250,6 +267,12 @@ class GUI(threading.Thread):
         Function called by the reset button
         """
         self._reset_gui_request_event.set()
+
+    def _button_stop(self):
+        """
+        Function called by the stop button
+        """
+        self._stop_arm_request_event.set()
 
     def _set_object(self, type_new):
         """
@@ -261,7 +284,7 @@ class GUI(threading.Thread):
     def _set_bin(self, bin_new):
         """
         internal facing function to set the bin name field
-        :param bin_new: tje new name of the bin
+        :param bin_new: the new name of the bin
         """
         self._logger.debug('Setting bin to: ' + bin_new)
         self._bin.configure(text=bin_new)
