@@ -17,8 +17,8 @@ import cv2
 from matplotlib import pyplot as plt
 import os
 
-LEFT_PATH = os.getcwd() + '/calibration/tripleL.png'
-RIGHT_PATH = os.getcwd() + '/calibration/tripleR.png'
+LEFT_PATH = os.getcwd() + '/calibration/markedLeft.png'
+RIGHT_PATH = os.getcwd() + '/calibration/markedRight.png'
 
 # Instantiate Paths
 leftCalibrationPath = os.getcwd() + '/calibration/cam_0_images/leftCal.npz'
@@ -88,7 +88,8 @@ print("Undistort Left")
 print("roi: " + str(roi))
 x,y,w,h = roi
 ldst = dst[y:y+h, x:x+w]
-ldst = ldst[250:675, 125:950]
+#ldst = ldst[250:675, 125:950]
+ldst = ldst[220:505, 210:865]
 
 # crop the image
 h,  w = img2.shape[:2]
@@ -102,7 +103,8 @@ print("Undistort Right")
 print("roi: " + str(roi))
 x,y,w,h = roi
 rdst = dst[y:y+h, x:x+w]
-rdst = rdst[250:675, 125:950]
+#rdst = rdst[250:675, 125:950]
+rdst = rdst[220:505, 210:865]
 
 print("Create Depth Map")
 
@@ -124,4 +126,4 @@ cv2.imwrite(os.getcwd() + '/calibration/depthmap.png', disparity)
 plt.imshow(imgL)
 plt.imshow(imgR)
 plt.imshow(disparity,'gray')
-#plt.show()
+plt.show()
