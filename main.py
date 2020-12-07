@@ -138,7 +138,7 @@ class Main:
             self._vision_thread.start()
 
             self._logger.debug('Starting SSH Thread')
-            self._ssh_thread.start()
+            #self._ssh_thread.start()
 
             while self._gui_thread.is_alive():      # Keep going until the GUI thread dies
                 vision_task_thread = None
@@ -204,11 +204,10 @@ class Main:
                         item_x = self._vision_thread._get_x()
                         item_y = self._vision_thread._get_y()
 
-                        # Translate to arm coordinates
-                        arm_x = (item_x * ARM_CONSTANT) + OPERATING_BOX_X
-                        arm_y = (item_y * ARM_CONSTANT) + OPERATING_BOX_Y
-
-                        if ((arm_x is not None) and (arm_y is not None)):
+                        if ((item_x is not None) and (item_y is not None)):
+                            # Translate to arm coordinates
+                            arm_x = (item_x * ARM_CONSTANT) + OPERATING_BOX_X
+                            arm_y = (item_y * ARM_CONSTANT) + OPERATING_BOX_Y
                             # PICK X Y Z ROLL PITCH YAW
                             # Arm flips x and y
                             self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0, 0, 1.4, 0))

@@ -424,12 +424,10 @@ class VisionThread(threading.Thread):
             cv2.imshow('GM Pick-Point', result)
             cv2.waitKey(1)                      # DO NOT REMOVE: For some reason this works
 
-    @staticmethod
-    def _get_x():
+    def _get_x(self):
         return self._current_x
 
-    @staticmethod
-    def _get_y():
+    def _get_y(self):
         return self._current_y
 
 # Logging Parameters

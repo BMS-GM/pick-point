@@ -145,13 +145,11 @@ class Network:
                 class_name = LABEL_MAP_BY_ID[class_id]
                 result[class_name] += 1
         return result
-
-    @staticmethod
-    def get_img_x():
+        
+    def get_img_x(self):
         return self._current_image_x
 
-    @staticmethod
-    def get_img_y():
+    def get_img_y(self):
         return self._current_image_y
 
     @staticmethod
