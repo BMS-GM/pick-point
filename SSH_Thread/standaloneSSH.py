@@ -16,6 +16,7 @@ __version__ = '1.0'
 import paramiko
 import sys
 import time
+import os
 
 client = paramiko.SSHClient()
 
@@ -37,15 +38,17 @@ command_stack_pos = 0
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 client.connect(hostname, username=user, password=userpass)
 
+'''
 # Move the listener script
 ftp_client = client.open_sftp()
 remotepath = '/home'
 ftp_client.put('listener.py', remotepath)
 ftp_client.close()
+'''
 
 # Exec the python script
 stdin, stdout, stderr = client.exec_command('source ~/catkin_ws/devel/setup.bash && export PYTHONPATH=${PYTHONPATH}:/home/niryo/catkin_ws/src/niryo_one_python_api/src/niryo_python_api && python listener.py')
-
+print (stdout)
 # Write commands
 userIn = ""
 while (userIn != "QUIT"):

@@ -28,7 +28,7 @@ class SSHThread(threading.Thread):
         # Create the default variables
         # Define the host, username, and password
         self.client = paramiko.SSHClient()
-        self.hostname = 'localhost'
+        self.hostname = '10.10.10.10' # Static IP of Arm if device is connected over wifi
         self.user = 'niryo'
         self.userpass = 'robotics'
         self._command_list = []

@@ -194,6 +194,10 @@ class Main:
                         with self._current_item_list_lock:
                             for item in self._current_item_list:
                                 if item.item_type == requested_item.item_type:
+                                    test = 0
+                                    if (test == 0):
+                                        self._ssh_thread._append_command("PICK 0.22 0 0.11 0 1.4 0")
+                                        test = 1
                                     x = "%0.4f in" % (item.x * size[1] * INCHES_PER_PIXEL)
                                     y = "%0.4f in" % (item.y * size[0] * INCHES_PER_PIXEL)
                                     z = "%0.4f in" % item.z
@@ -207,7 +211,7 @@ class Main:
                         test = 0
 
                         if (test == 0):
-                            self._ssh_thread._append_command("PICK 629 417 0.11 0 1.4 0")
+                            self._ssh_thread._append_command("PICK 0.22 0 0.11 0 1.4 0")
                             test = 1
 
                         if ((item_x is not None) and (item_y is not None)):
