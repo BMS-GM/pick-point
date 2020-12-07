@@ -146,7 +146,8 @@ class GUI(threading.Thread):
         # Result Label
         self._result = tk.Label(self._root, bg="white", text="", font=self._FONT, fg="white")
         self._result.grid(row=4, columnspan=2, pady=10)
-
+        
+        '''
         # Arm Speed Label
         self._speed_static = tk.Label(self._root, bg=self._BG, text="Arm Speed %:", font=self._FONT, anchor="w")
         self._speed_static.grid(row=5, column=0)
@@ -163,7 +164,7 @@ class GUI(threading.Thread):
                                        fg="white", width=8, command=self._button_stop)
         self._next_button_text.set("Stop")
         self._stop_button.grid(row=6, columnspan=2)
-
+        '''
         # Log Label
         self._log = tk.Label(self._root, bg=self._BG, font=("Times", 14), text="Log:", anchor="w")
         self._log.grid(row=7, columnspan=2, pady=10)
