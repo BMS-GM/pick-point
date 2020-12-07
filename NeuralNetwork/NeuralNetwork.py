@@ -51,8 +51,6 @@ class Network:
             self._graph_def = tf.GraphDef()
             self._graph_def.ParseFromString(f.read())
         self._logger.info('Reading in Graph - COMPLETE')
-        self._current_image_x = None
-        self._current_image_y = None
 
         self._logger.info('Restoring Graph...')
         self._init_session()
@@ -106,6 +104,12 @@ class Network:
 
         self._logger.info('Setup Tensorflow Logging - COMPLETE')
 
+    def get_img_x(self):
+        return self._current_image_x
+
+    def get_img_y(self):
+        return self._current_image_y
+
     def feed_image(self, img):
         """
         Feeds an image to the current model and returns the result matrix
@@ -145,12 +149,6 @@ class Network:
                 class_name = LABEL_MAP_BY_ID[class_id]
                 result[class_name] += 1
         return result
-        
-    def get_img_x(self):
-        return self._current_image_x
-
-    def get_img_y(self):
-        return self._current_image_y
 
     @staticmethod
     def get_item_locations(network_output):
@@ -189,6 +187,10 @@ class Network:
         num_detections = int(network_output[0][0])
         display_all = label == "ALL"
         num_labels = 0
+
+        current_image_x = None
+        current_image_y = None
+
         for i in range(num_detections):
             class_id = int(network_output[3][0][i])
             score = float(network_output[1][0][i])
@@ -201,12 +203,12 @@ class Network:
                 cv2.rectangle(result_img, (int(x), int(y)), (int(right), int(bottom)), (125, 255, 51), thickness=2)
 
                 # Find center of the rectangle
-                self._current_image_x = int((int(x) + int(right)) / 2)
-                self._current_image_y = int((int(y) + int(bottom)) / 2)
+                current_image_x = int((int(x) + int(right)) / 2)
+                current_image_y = int((int(y) + int(bottom)) / 2)
 
-                cv2.circle(iamge, (self._current_image_x, self._current_image_y), radius = 0, color = (125, 255, 51), thickness = -1)
+                cv2.circle(result_img, (current_image_x, current_image_y), radius = 0, color = (125, 255, 51), thickness = -1)
 
-                print("X: {}  Y: {}".format(self._current_image_x, self._current_image_y))
+                print("X: {}  Y: {}".format(current_image_x, current_image_y))
 
                 if display_class_name:
                     class_name = LABEL_MAP_BY_ID[class_id]
@@ -225,4 +227,4 @@ class Network:
                 if num_labels > max_labels:
                     break
 
-        return result_img
+        return result_img, current_image_x, current_image_y

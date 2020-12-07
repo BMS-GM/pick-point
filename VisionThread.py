@@ -319,9 +319,6 @@ class VisionThread(threading.Thread):
 
                 self._process_results()
 
-                self._current_x = Network.get_img_x()
-                self._current_y = Network.get_img_y()
-
                 with self._visualization_settings_lock:
                     if self._display_results:
                         self._display_machine_learning_result(left)
@@ -415,7 +412,7 @@ class VisionThread(threading.Thread):
         ml_result = self.get_machine_learning_result()
 
         with self._visualization_settings_lock:
-            result = Network.visualize_output(image, ml_result, label=self._class_label_to_show, max_labels=self._max_labels,
+            result, self._current_x, self._current_y = Network.visualize_output(image, ml_result, label=self._class_label_to_show, max_labels=self._max_labels,
                                               display_class_name=self._display_class_name, display_score=self._display_score)
             result = cv2.resize(result, (0, 0), fx=0.5, fy=0.5)
             if SHOW_FPS:
