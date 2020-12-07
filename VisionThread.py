@@ -88,7 +88,7 @@ class VisionThread(threading.Thread):
 
         self._logger.debug('Initializing Depth Map Thread')
         self._depth_map_thread = None
-        self._depth_map_result = []
+        self._depth_map_result = None
         self._depth_map_result_lock = threading.Lock()
 
         # visualization settings:
