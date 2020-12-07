@@ -204,6 +204,12 @@ class Main:
                         item_x = self._vision_thread._get_x()
                         item_y = self._vision_thread._get_y()
 
+                        test = 0
+
+                        if (test == 0):
+                            self._ssh_thread._append_command("PICK 629 417 0.11 0 1.4 0")
+                            test = 1
+
                         if ((item_x is not None) and (item_y is not None)):
                             # Translate to arm coordinates
                             arm_x = float(item_x * ARM_CONSTANT) + OPERATING_BOX_X
