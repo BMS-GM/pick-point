@@ -206,8 +206,8 @@ class Main:
 
                         if ((item_x is not None) and (item_y is not None)):
                             # Translate to arm coordinates
-                            arm_x = (item_x * ARM_CONSTANT) + OPERATING_BOX_X
-                            arm_y = (item_y * ARM_CONSTANT) + OPERATING_BOX_Y
+                            arm_x = float(item_x * ARM_CONSTANT) + OPERATING_BOX_X
+                            arm_y = float(item_y * ARM_CONSTANT) + OPERATING_BOX_Y
                             # PICK X Y Z ROLL PITCH YAW
                             # Arm flips x and y
                             self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0, 0, 1.4, 0))

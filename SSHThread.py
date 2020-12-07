@@ -79,7 +79,7 @@ class SSHThread(threading.Thread):
     Appends passed command to the command list
     input: new_command
     """
-    def _append_command(new_command):
+    def _append_command(self, new_command):
         if (new_command not in self._command_list):
             self._command_list.append(new_command)
 
