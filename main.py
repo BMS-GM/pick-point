@@ -24,7 +24,7 @@ import time
 from SQL_Driver import ObjectDB
 from Item import Item
 from VisionThread import VisionThread
-from SSH_Thread import SSHThread
+from SSHThread import SSHThread
 from GUI import GUI
 
 LOG_LEVEL_CMD = logging.WARNING         # The min log level that will be displayed in the console
