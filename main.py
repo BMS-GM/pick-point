@@ -210,7 +210,7 @@ class Main:
                             arm_y = float(item_y * ARM_CONSTANT) + OPERATING_BOX_Y
                             # PICK X Y Z ROLL PITCH YAW
                             # Arm flips x and y
-                            self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0, 0, 1.4, 0))
+                            self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0.11, 0, 1.4, 0))
 
                             # SHIFT AXIS AMOUNT
                             # Move out of the way
