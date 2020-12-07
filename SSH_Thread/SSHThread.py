@@ -19,6 +19,7 @@ import threading
 import time
 import paramiko
 import sys
+import logging
 
 class SSHThread(threading.Thread):
 
@@ -81,3 +82,43 @@ class SSHThread(threading.Thread):
     def _append_command(new_command):
         if (new_command not in self._command_list):
             self._command_list.append(new_command)
+
+if __name__ == '__main__':
+    # =================================
+    # Setup Logging
+    # =================================
+    # Create master logger and set global log level
+    log_dir = "C:\\Users\\jmjerred-adm\\PycharmProjects\\pick-point\\Logs"
+    logger = logging.getLogger("GM_Pick_Point")
+    logger.setLevel(logging.DEBUG)
+
+    # create log file
+    file_handler = logging.FileHandler(log_dir + '\\GUI - %s.log' %
+                                       datetime.datetime.now().strftime("%Y.%m.%d-%H.%M.%S"))
+    file_handler.setLevel(logging.DEBUG)
+
+    # create console logger
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+
+    # Format Log
+    log_formatter = logging.Formatter('%(levelname)s - %(asctime)s - %(name)s - %(message)s')
+    file_handler.setFormatter(log_formatter)
+    console_handler.setFormatter(log_formatter)
+
+    # Add outputs to main logger
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    # =====================================================================
+
+    logger.debug('Stating GUI Thread')
+    ssh_thread = SSHThread()
+    logger.debug('HERE')
+    time.sleep(5)
+    logger.debug('GOT HERE')
+    ssh_thread.set_result(1, item="Sphere", placement="Bin A", x=3, y=4, z=5)
+    time.sleep(5)
+    ssh_thread.terminate()
+    ssh_thread.join()
+    logger.debug('Child Thread is Dead')
+    # test.set_image("image.PNG")
