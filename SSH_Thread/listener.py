@@ -6,7 +6,7 @@ Michigan  Technological University: Blue Marble Security Enterprise
 listener.py
 Author: Corbin Holz
 Date Created: 10/1/2020
-Date Last Modified: 10/2/2020
+Date Last Modified: 12/8/2020
 """
 
 __author__ = 'Blue Marble Security Enterprise'
@@ -51,10 +51,12 @@ robot.change_tool(TOOL_GRIPPER_3_ID)
 try:
     while (listening):
         # For every loop, wait for commands
-        print("WAIT", file = sys.stdout)
-        command = input()
+        #print("WAIT", file = sys.stdout)
+	print("WAIT")
+        command = raw_input()
 
-        print("BUSY", file = sys.stdout)
+        #print("BUSY", file = sys.stdout)
+	print("BUSY")	
 
         # Split the command into partitions
         # ie. [command] [arg1] [arg2] etc.
@@ -65,9 +67,9 @@ try:
             x_val = float(command[1])
             y_val = float(command[2])
             z_val = float(command[3])
-            roll_val = math.radians(int(command[4]))
-            pitch_val = math.radians(int(command[5]))
-            yaw_val = math.radians(int(command[6]))
+            roll_val = float(command[4])
+            pitch_val = float(command[5])
+            yaw_val = float(command[6])
             robot.move_pose(x = x_val, y = y_val, z = z_val, roll = roll_val, pitch = pitch_val, yaw = yaw_val)
 
         # If shift command, shift along specified axis
@@ -86,7 +88,7 @@ try:
                     robot.shift_pose(AXIS_Z, shiftBy)
 
             else:
-                shiftBy = math.radians(int(command[2]))
+                shiftBy = float(command[2])
                 if spec_axis is "roll":
                     robot.shift_pose(ROT_ROLL, shiftBy)
 
@@ -98,46 +100,47 @@ try:
             
         # If open command, open the effector
         elif (command[0] == "OPEN"):
-            robot.open_gripper(get_current_tool_id(), max_grip_speed)
+            robot.open_gripper(robot.get_current_tool_id(), max_grip_speed)
 
         # If close command, close the effector
         elif (command[0] == "CLOSE"):
-            robot.close_gripper(get_current_tool_id(), max_grip_speed)
+            robot.close_gripper(TOOL_GRIPPER_3_ID, max_grip_speed)
 
         # If PICK command open the effector, move, and close the effector
         elif (command[0] == "PICK"):
-            robot.open_gripper(get_current_tool_id(), max_grip_speed)
+            robot.open_gripper(TOOL_GRIPPER_3_ID, max_grip_speed)
 
             x_val = float(command[1])
             y_val = float(command[2])
             z_val = float(command[3])
-            roll_val = math.radians(int(command[4]))
-            pitch_val = math.radians(int(command[5]))
-            yaw_val = math.radians(int(command[6]))
+            roll_val = float(command[4])
+            pitch_val = float(command[5])
+            yaw_val = float(command[6])
             robot.move_pose(x = x_val, y = y_val, z = z_val, roll = roll_val, pitch = pitch_val, yaw = yaw_val)
 
-            robot.close_gripper(get_current_tool_id(), max_grip_speed)
+            robot.close_gripper(TOOL_GRIPPER_3_ID, max_grip_speed)
 
         # If drop command move arm, open effector, close effector
         elif (command[0] == "DROP"):
             x_val = float(command[1])
             y_val = float(command[2])
             z_val = float(command[3])
-            roll_val = math.radians(int(command[4]))
-            pitch_val = math.radians(int(command[5]))
-            yaw_val = math.radians(int(command[6]))
+            roll_val = float(command[4])
+            pitch_val = float(command[5])
+            yaw_val = float(command[6])
             robot.move_pose(x = x_val, y = y_val, z = z_val, roll = roll_val, pitch = pitch_val, yaw = yaw_val)
             
-            robot.open_gripper(get_current_tool_id(), max_grip_speed)
+            robot.open_gripper(TOOL_GRIPPER_3_ID, max_grip_speed)
             robot.wait(sleep_time)
-            robot.close_gripper(get_current_tool_id(), max_grip_speed)
+            robot.close_gripper(TOOL_GRIPPER_3_ID, max_grip_speed)
 
         # If quit, stop listening, end program
         elif (command[0] == "QUIT"):
             listening = 0
 
         # When Done print to standard out
-        print("DONE", file = sys.stdout)
+        #print("DONE", file = sys.stdout)
+	print("DONE")
 
 except NiryoOneException as e:
     print (e)
