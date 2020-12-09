@@ -24,7 +24,10 @@ import logging
 class SSHThread(threading.Thread):
 
     def __init__(self):
-
+        threading.Thread.__init__(self)
+        # Setup Threading
+        super(SSHThread, self).__init__()       # Initialize Thread
+        
         # Create the default variables
         # Define the host, username, and password
         self.client = paramiko.SSHClient()
@@ -32,7 +35,9 @@ class SSHThread(threading.Thread):
         self.user = 'niryo'
         self.userpass = 'robotics'
         self._command_list = []
-
+        
+        print("SSH STARTED")
+        
         # Since SSH allows for secure connections with keys, allow to auto accept keys without passwords
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
@@ -43,11 +48,13 @@ class SSHThread(threading.Thread):
     def run(self):
         self.client.connect(self.hostname, username=self.user, password=self.userpass)
         
+        '''
         # Move the listener script
         ftp_client = self.client.open_sftp()
         remotepath = '/home'
         ftp_client.put('listener.py', remotepath)
         ftp_client.close()
+        '''
 
         # Exec the python script
         stdin, stdout, stderr = self.client.exec_command('source ~/catkin_ws/devel/setup.bash && export PYTHONPATH=${PYTHONPATH}:/home/niryo/catkin_ws/src/niryo_one_python_api/src/niryo_python_api && python listener.py')
@@ -111,8 +118,9 @@ if __name__ == '__main__':
     logger.addHandler(console_handler)
     # =====================================================================
 
-    logger.debug('Stating GUI Thread')
+    logger.debug('Stating SSH Thread')
     ssh_thread = SSHThread()
+    ssh_thread.start()
     logger.debug('HERE')
     time.sleep(5)
     logger.debug('GOT HERE')

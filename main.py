@@ -138,7 +138,7 @@ class Main:
             self._vision_thread.start()
 
             self._logger.debug('Starting SSH Thread')
-            #self._ssh_thread.start()
+            self._ssh_thread.start()
 
             while self._gui_thread.is_alive():      # Keep going until the GUI thread dies
                 vision_task_thread = None
@@ -196,7 +196,7 @@ class Main:
                                 if item.item_type == requested_item.item_type:
                                     test = 0
                                     if (test == 0):
-                                        self._ssh_thread._append_command("PICK 0.22 0 0.11 0 1.4 0")
+                                        self._ssh_thread._append_command("PICK 0.23 0 0.11 0 1.4 0")
                                         test = 1
                                     x = "%0.4f in" % (item.x * size[1] * INCHES_PER_PIXEL)
                                     y = "%0.4f in" % (item.y * size[0] * INCHES_PER_PIXEL)
