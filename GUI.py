@@ -326,6 +326,7 @@ if __name__ == '__main__':
     # Setup Logging
     # =================================
     # Create master logger and set global log level
+    '''
     log_dir = "C:\\Users\\jmjerred-adm\\PycharmProjects\\pick-point\\Logs"
     logger = logging.getLogger("GM_Pick_Point")
     logger.setLevel(logging.DEBUG)
@@ -348,15 +349,15 @@ if __name__ == '__main__':
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
     # =====================================================================
-
-    logger.debug('Stating GUI Thread')
+    '''
+    #logger.debug('Stating GUI Thread')
     gui_thread = GUI()
-    logger.debug('HERE')
+    #logger.debug('HERE')
     time.sleep(5)
-    logger.debug('GOT HERE')
+    #logger.debug('GOT HERE')
     gui_thread.set_result(1, item="Sphere", placement="Bin A", x=3, y=4, z=5)
     time.sleep(5)
     gui_thread.terminate()
     gui_thread.join()
-    logger.debug('Child Thread is Dead')
+    #logger.debug('Child Thread is Dead')
     # test.set_image("image.PNG")
