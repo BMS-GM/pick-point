@@ -52,11 +52,11 @@ try:
     while (listening):
         # For every loop, wait for commands
         #print("WAIT", file = sys.stdout)
-	print("WAIT")
+	    print("WAIT")
         command = raw_input()
 
         #print("BUSY", file = sys.stdout)
-	print("BUSY")	
+	    print("BUSY")	
 
         # Split the command into partitions
         # ie. [command] [arg1] [arg2] etc.
