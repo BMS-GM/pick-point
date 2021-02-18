@@ -27,7 +27,7 @@ class SSHThread(threading.Thread):
         threading.Thread.__init__(self)
         # Setup Threading
         super(SSHThread, self).__init__()       # Initialize Thread
-        
+
         # Create the default variables
         # Define the host, username, and password
         self.client = paramiko.SSHClient()
@@ -35,9 +35,9 @@ class SSHThread(threading.Thread):
         self.user = 'niryo'
         self.userpass = 'robotics'
         self._command_list = []
-        
+
         print("SSH STARTED")
-        
+
         # Since SSH allows for secure connections with keys, allow to auto accept keys without passwords
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
@@ -56,39 +56,41 @@ class SSHThread(threading.Thread):
         ftp_client.close()
         '''
 
-        # Exec the python script
-        stdin, stdout, stderr = self.client.exec_command('source ~/catkin_ws/devel/setup.bash && export PYTHONPATH=${PYTHONPATH}:/home/niryo/catkin_ws/src/niryo_one_python_api/src/niryo_python_api && python listener.py')
-        print("Exec'd the python script")
+
+
         # Write commands
         current_command = ""
         while (current_command != "QUIT"):
-            print("Entered while loop")
-            # Wait until "WAIT" is recieved
-            time.sleep(30)
-            print("Done sleeping")
-            """
-            output = "WAIT"
-            print("Read STD OUT")
-            while (output[-1] != "WAIT"):
-                print("Waiting...")
-                # Don't poll as soon as possible for performance
-                # Only poll every second
-                time.sleep(1)
-                output = stdout.readlines()
-            """
-
-            # Wait for commands (loop if empty)
+            # Wait until something is in the command list
             while (not self._command_list):
                 time.sleep(1)
 
-            # FIFO commands
+            # FIFO the first command
             current_command = self._command_list.pop(0)
-            stdin.write(current_command)
-            stdin.flush()
-            print("Pushed Command {}".format(current_command))
-            current_command = "QUIT"
+            current_command = current_command.upper()
 
-                
+            if (current_command != "QUIT"):
+                # Exec the python script
+                stdin, stdout, stderr = self.client.exec_command('source ~/catkin_ws/devel/setup.bash && export PYTHONPATH=${PYTHONPATH}:/home/niryo/catkin_ws/src/niryo_one_python_api/src/niryo_python_api && python listenerv2.py')
+
+                stdin.write(current_command)
+                stdin.flush()
+                stdin.channel.shutdown_write()
+
+                print("Running Command {}".format(current_command))
+
+                output = stdout.readlines()
+
+                while (not output or output[-1] != "DONE\n"):
+                    time.sleep(1)
+                    print("polling for wait")
+                    output = stdout.readlines()
+
+                stdin.close()
+                stdout.close()
+                stderr.close()
+
+
         self.client.close()
 
     """
