@@ -24,7 +24,7 @@ import time
 from SQL_Driver import ObjectDB
 from Item import Item
 from VisionThread import VisionThread
-#from SSHThread import SSHThread
+from SSH_Thread import SSHThread
 from GUI import GUI
 
 LOG_LEVEL_CMD = logging.WARNING         # The min log level that will be displayed in the console
@@ -108,10 +108,10 @@ class Main:
         self._logger.debug('Initializing Vision Thread')
         self._vision_thread = VisionThread(LEFT_CAMERA_SERIAL_NUM, RIGHT_CAMERA_SERIAL_NUM, GRAPH_TYPE, LOG_DIR,
                                            IMAGE_DOWNSCALE_RATIO)
-        '''
+        
         # Setup SSH
-        self._ssh_thread = SSHThread()
-        '''
+        self._ssh_thread = SSHThread.SSHThread()
+        
         
         # Setup local variables
         self._camera_result = None
@@ -139,7 +139,9 @@ class Main:
             self._vision_thread.start()
 
             self._logger.debug('Starting SSH Thread')
-            #self._ssh_thread.start()
+            self._ssh_thread.start()
+            self._ssh_thread._append_command("OPEN")
+            self._ssh_thread._append_command("QUIT")
 
             while self._gui_thread.is_alive():      # Keep going until the GUI thread dies
                 vision_task_thread = None
@@ -212,7 +214,7 @@ class Main:
                         test = 0
 
                         if (test == 0):
-                            #self._ssh_thread._append_command("PICK 0.22 0 0.11 0 1.4 0")
+                            self._ssh_thread._append_command("PICK 0.22 0 0.11 0 1.4 0")
                             test = 1
 
                         if ((item_x is not None) and (item_y is not None)):

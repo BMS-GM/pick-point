@@ -56,7 +56,7 @@ class DepthMapThread(threading.Thread):
         Main Thread Function
         """
         self._logger.debug("Running Depth Map Thread...")
-        self._logger.warning("Depth Mapping is not implemented - Setting result matrix to zero")
+        #self._logger.warning("Depth Mapping is not implemented - Setting result matrix to zero")
 
         rows = self._left_image.shape[0]
         cols = self._left_image.shape[1]

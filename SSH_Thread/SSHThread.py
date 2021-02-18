@@ -47,7 +47,7 @@ class SSHThread(threading.Thread):
 
     def run(self):
         self.client.connect(self.hostname, username=self.user, password=self.userpass)
-        
+        print("Running the connection!")
         '''
         # Move the listener script
         ftp_client = self.client.open_sftp()
@@ -58,25 +58,35 @@ class SSHThread(threading.Thread):
 
         # Exec the python script
         stdin, stdout, stderr = self.client.exec_command('source ~/catkin_ws/devel/setup.bash && export PYTHONPATH=${PYTHONPATH}:/home/niryo/catkin_ws/src/niryo_one_python_api/src/niryo_python_api && python listener.py')
-
+        print("Exec'd the python script")
         # Write commands
-        userIn = ""
-        while (userIn != "QUIT"):
+        current_command = ""
+        while (current_command != "QUIT"):
+            print("Entered while loop")
             # Wait until "WAIT" is recieved
-            output = stdout.readlines()
+            time.sleep(30)
+            print("Done sleeping")
+            """
+            output = "WAIT"
+            print("Read STD OUT")
             while (output[-1] != "WAIT"):
+                print("Waiting...")
                 # Don't poll as soon as possible for performance
                 # Only poll every second
                 time.sleep(1)
                 output = stdout.readlines()
+            """
 
             # Wait for commands (loop if empty)
             while (not self._command_list):
                 time.sleep(1)
 
             # FIFO commands
-            stdin.write(self._command_list.pop(0))
+            current_command = self._command_list.pop(0)
+            stdin.write(current_command)
             stdin.flush()
+            print("Pushed Command {}".format(current_command))
+            current_command = "QUIT"
 
                 
         self.client.close()
@@ -89,6 +99,7 @@ class SSHThread(threading.Thread):
     def _append_command(self, new_command):
         if (new_command not in self._command_list):
             self._command_list.append(new_command)
+            print("Appended {}".format(new_command))
 
 if __name__ == '__main__':
     # =================================
