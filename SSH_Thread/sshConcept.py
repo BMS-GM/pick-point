@@ -20,9 +20,9 @@ import os
 
 client = paramiko.SSHClient()
 
-hostname = 'colossus.it.mtu.edu'
-user = 'username'
-userpass = 'password'
+hostname = '10.10.10.10'
+user = 'niryo'
+userpass = 'robotics'
 
 isManual = 1
 
@@ -54,7 +54,7 @@ while (userIn != "QUIT"):
         userIn = userIn.upper()
         if (userIn != "QUIT"):
             # Exec the python script
-            stdin, stdout, stderr = client.exec_command('python listenerConcept.py')
+            stdin, stdout, stderr = client.exec_command('source ~/catkin_ws/devel/setup.bash && export PYTHONPATH=${PYTHONPATH}:/home/niryo/catkin_ws/src/niryo_one_python_api/src/niryo_python_api && python listenerv2.py')
 
             stdin.write(userIn)
             stdin.flush()

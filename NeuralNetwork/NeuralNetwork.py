@@ -104,10 +104,10 @@ class Network:
 
         self._logger.info('Setup Tensorflow Logging - COMPLETE')
 
-    def get_img_x(self):
+    def get_img_x():
         return self._current_image_x
 
-    def get_img_y(self):
+    def get_img_y():
         return self._current_image_y
 
     def feed_image(self, img):
@@ -207,8 +207,6 @@ class Network:
                 current_image_y = int((int(y) + int(bottom)) / 2)
 
                 cv2.circle(result_img, (current_image_x, current_image_y), radius = 0, color = (125, 255, 51), thickness = -1)
-
-                print("X: {}  Y: {}".format(current_image_x, current_image_y))
 
                 if display_class_name:
                     class_name = LABEL_MAP_BY_ID[class_id]

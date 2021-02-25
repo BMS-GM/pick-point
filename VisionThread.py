@@ -250,6 +250,7 @@ class VisionThread(threading.Thread):
                 # Read Left and right Images
                 imgL = cv2.imread(leftName)
                 imgR = cv2.imread(rightName)
+
                 """
                 # Convert images to arrays
                 imgL = np.array(imgL, dtype=np.uint8)
@@ -419,12 +420,16 @@ class VisionThread(threading.Thread):
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 cv2.putText(result, '%0.4f seconds/frame' % self._average_time, (0, 30), font, 1, (255, 255, 255), 1, cv2.LINE_AA)
             cv2.imshow('GM Pick-Point', result)
+            print("Vision Thread X: {}".format(self._current_x))
+            print("Vision Thread Y: {}".format(self._current_y))
             cv2.waitKey(1)                      # DO NOT REMOVE: For some reason this works
 
     def _get_x(self):
+        print("Vision Thread X: {}".format(self._current_x))
         return self._current_x
 
     def _get_y(self):
+        print("Vision Thread Y: {}".format(self._current_y))
         return self._current_y
 
 # Logging Parameters

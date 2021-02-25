@@ -35,6 +35,8 @@ GRAPH_TYPE = 'SSD_INCEPTION_V2'         # Network graph model to use for object 
 INCHES_PER_PIXEL = 0.015735782          # Number of inches each pixel represents at the datum
 IMAGE_DOWNSCALE_RATIO = 0.5             # Downscale ratio for machine learning
 ARM_CONSTANT = 0.00062927
+x_const = 
+y_const = 0.00061
 OPERATING_BOX_Y = 0.15
 OPERATING_BOX_X = -0.23
                                         #    1  = process the full image (more accurate)
@@ -141,7 +143,7 @@ class Main:
             self._logger.debug('Starting SSH Thread')
             self._ssh_thread.start()
             self._ssh_thread._append_command("OPEN")
-            self._ssh_thread._append_command("QUIT")
+            self._ssh_thread._append_command("CLOSE")
 
             while self._gui_thread.is_alive():      # Keep going until the GUI thread dies
                 vision_task_thread = None
@@ -149,6 +151,8 @@ class Main:
                 try:
                     vision_task_thread = threading.Thread(target=self._call_vision_thread())
                     vision_task_thread.start()
+
+                    print("Test")
 
                     # If a SQL job is being processed don't start another one
                     if not self._processing_job.is_set():
@@ -194,28 +198,26 @@ class Main:
                         x = "N/A"
                         y = "N/A"
                         z = "N/A"
+                        """
                         with self._current_item_list_lock:
                             for item in self._current_item_list:
                                 if item.item_type == requested_item.item_type:
-                                    test = 0
-                                    if (test == 0):
-                                        self._ssh_thread._append_command("PICK 0.23 0 0.11 0 1.4 0")
-                                        test = 1
                                     x = "%0.4f in" % (item.x * size[1] * INCHES_PER_PIXEL)
                                     y = "%0.4f in" % (item.y * size[0] * INCHES_PER_PIXEL)
                                     z = "%0.4f in" % item.z
                                     print("x = %s, y = %s, z = %s" % (x, y, z))
                                     break
+                        """
 
                         # Get the image coordinates
                         item_x = self._vision_thread._get_x()
+                        x = item_x
                         item_y = self._vision_thread._get_y()
+                        y = item_y
+                        z = 0
+                        print("Tried to get image coordinates")
 
-                        test = 0
-
-                        if (test == 0):
-                            self._ssh_thread._append_command("PICK 0.22 0 0.11 0 1.4 0")
-                            test = 1
+                        print("Item-X: {}, Item-Y: {}".format(item_x, item_y))
 
                         if ((item_x is not None) and (item_y is not None)):
                             # Translate to arm coordinates

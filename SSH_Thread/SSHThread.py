@@ -55,6 +55,7 @@ class SSHThread(threading.Thread):
         ftp_client.put('listener.py', remotepath)
         ftp_client.close()
         '''
+        time.sleep(10)
 
 
 
@@ -81,10 +82,12 @@ class SSHThread(threading.Thread):
 
                 output = stdout.readlines()
 
-                while (not output or output[-1] != "DONE\n"):
+                while (not output and output[-1] != "DONE\n"):
                     time.sleep(1)
-                    print("polling for wait")
+                    print(output)
                     output = stdout.readlines()
+                    if ('DONE\n' in output):
+                        break
 
                 stdin.close()
                 stdout.close()
