@@ -35,10 +35,10 @@ GRAPH_TYPE = 'SSD_INCEPTION_V2'         # Network graph model to use for object 
 INCHES_PER_PIXEL = 0.015735782          # Number of inches each pixel represents at the datum
 IMAGE_DOWNSCALE_RATIO = 0.5             # Downscale ratio for machine learning
 ARM_CONSTANT = 0.00062927
-x_const = 
-y_const = 0.00061
-OPERATING_BOX_Y = 0.15
-OPERATING_BOX_X = -0.23
+x_shift_const = 0.4
+x_conversion_const = x_shift_const/634.5 #Shift amount/middle pixel value
+x_final_const = 0.926277568
+y_conversion_const = 0.00061
                                         #    1  = process the full image (more accurate)
                                         #    <1 = process a smaler version of the image (faster)
 
@@ -221,8 +221,8 @@ class Main:
 
                         if ((item_x is not None) and (item_y is not None)):
                             # Translate to arm coordinates
-                            arm_x = float(item_x * ARM_CONSTANT) + OPERATING_BOX_X
-                            arm_y = float(item_y * ARM_CONSTANT) + OPERATING_BOX_Y
+                            arm_x = float((item_x * x_conversion_const - x_shift_const) * x_final_const)
+                            arm_y = float(item_y * y_conversion_const)
                             # PICK X Y Z ROLL PITCH YAW
                             # Arm flips x and y
                             self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0.11, 0, 1.4, 0))
