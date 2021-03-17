@@ -136,8 +136,8 @@ try:
         robot.set_arm_max_velocity(updated_speed)
 
     # If CALIBRATE, set arm velocity to default/max arm velocity (ran on startup)
-    elif command[0] == "Calibrate":
-        robot.set_arm_max_velocity(300)
+    elif command[0] == "CALIBRATE":
+        robot.calibrate_auto()
 
     # When Done print to standard out
     #print("DONE", file = sys.stdout)
