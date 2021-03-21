@@ -198,7 +198,7 @@ class Main:
                         x = "N/A"
                         y = "N/A"
                         z = "N/A"
-                        """
+                        
                         with self._current_item_list_lock:
                             for item in self._current_item_list:
                                 if item.item_type == requested_item.item_type:
@@ -207,7 +207,7 @@ class Main:
                                     z = "%0.4f in" % item.z
                                     print("x = %s, y = %s, z = %s" % (x, y, z))
                                     break
-                        """
+                    
 
                         # Get the image coordinates
                         item_x = self._vision_thread._get_x()
@@ -225,14 +225,14 @@ class Main:
                             arm_y = float(item_y * y_conversion_const)
                             # PICK X Y Z ROLL PITCH YAW
                             # Arm flips x and y
-                            self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0.11, 0, 1.4, 0))
+                            self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0.1, 0, 1.4, 0))
 
                             # SHIFT AXIS AMOUNT
                             # Move out of the way
-                            self._ssh_thread._append_command("SHIFT {} {}".format("z", 0.2))
+                            self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.1 + .15, 0, 1.4, 0))
 
                             # DROP OFF POINT
-                            # self._ssh_thread._append_command("DROP {} {} {} {} {} {}".format(arm_x, arm_y, 0, 0, 0, 0))
+                            self._ssh_thread._append_command("DROP {} {} {} {} {} {}".format(.007, 0.231, 0.340, 0.066, 1.284, 1.687))
                         
 
                         
