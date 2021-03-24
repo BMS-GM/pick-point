@@ -138,7 +138,7 @@ try:
     # If CALIBRATE, set arm velocity to default/max arm velocity (ran on startup)
     elif command[0] == "CALIBRATE":
         robot.calibrate_auto()
-
+        
     # When Done print to standard out
     #print("DONE", file = sys.stdout)
 	print("DONE")

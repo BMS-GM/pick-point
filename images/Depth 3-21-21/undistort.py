@@ -17,8 +17,8 @@ import cv2
 from matplotlib import pyplot as plt
 import os
 
-LEFT_PATH = os.getcwd() + '/calibration/left_img.png'
-RIGHT_PATH = os.getcwd() + '/calibration/right_img.png'
+LEFT_PATH = os.getcwd() + '/calibration/markedLeft.png'
+RIGHT_PATH = os.getcwd() + '/calibration/markedRight.png'
 
 # Instantiate Paths
 leftCalibrationPath = os.getcwd() + '/calibration/cam_0_images/leftCal.npz'

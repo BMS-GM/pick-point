@@ -52,11 +52,11 @@ try:
     while (listening):
         # For every loop, wait for commands
         #print("WAIT", file = sys.stdout)
-	print("WAIT")
+        print("WAIT")
         command = raw_input()
 
         #print("BUSY", file = sys.stdout)
-	print("BUSY")	
+        print("BUSY")	
 
         # Split the command into partitions
         # ie. [command] [arg1] [arg2] etc.
@@ -100,7 +100,7 @@ try:
             
         # If open command, open the effector
         elif (command[0] == "OPEN"):
-            robot.open_gripper(robot.get_current_tool_id(), max_grip_speed)
+            robot.open_gripper(TOOL_GRIPPER_3_ID, max_grip_speed)
 
         # If close command, close the effector
         elif (command[0] == "CLOSE"):

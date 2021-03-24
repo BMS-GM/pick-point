@@ -24,7 +24,7 @@ import time
 from SQL_Driver import ObjectDB
 from Item import Item
 from VisionThread import VisionThread
-from SSHThread import SSHThread
+from SSH_Thread import SSHThread
 from GUI import GUI
 
 LOG_LEVEL_CMD = logging.WARNING         # The min log level that will be displayed in the console
@@ -35,8 +35,10 @@ GRAPH_TYPE = 'SSD_INCEPTION_V2'         # Network graph model to use for object 
 INCHES_PER_PIXEL = 0.015735782          # Number of inches each pixel represents at the datum
 IMAGE_DOWNSCALE_RATIO = 0.5             # Downscale ratio for machine learning
 ARM_CONSTANT = 0.00062927
-OPERATING_BOX_Y = 0.15
-OPERATING_BOX_X = -0.23
+x_shift_const = 0.4
+x_conversion_const = x_shift_const/634.5 #Shift amount/middle pixel value
+x_final_const = 0.926277568
+y_conversion_const = 0.00061
                                         #    1  = process the full image (more accurate)
                                         #    <1 = process a smaler version of the image (faster)
 
@@ -108,10 +110,11 @@ class Main:
         self._logger.debug('Initializing Vision Thread')
         self._vision_thread = VisionThread(LEFT_CAMERA_SERIAL_NUM, RIGHT_CAMERA_SERIAL_NUM, GRAPH_TYPE, LOG_DIR,
                                            IMAGE_DOWNSCALE_RATIO)
-
+        
         # Setup SSH
-        self._ssh_thread = SSHThread()
-
+        self._ssh_thread = SSHThread.SSHThread()
+        
+        
         # Setup local variables
         self._camera_result = None
         self._camera_result_lock = threading.Lock()
@@ -139,6 +142,8 @@ class Main:
 
             self._logger.debug('Starting SSH Thread')
             self._ssh_thread.start()
+            self._ssh_thread._append_command("OPEN")
+            self._ssh_thread._append_command("CLOSE")
 
             while self._gui_thread.is_alive():      # Keep going until the GUI thread dies
                 vision_task_thread = None
@@ -146,6 +151,8 @@ class Main:
                 try:
                     vision_task_thread = threading.Thread(target=self._call_vision_thread())
                     vision_task_thread.start()
+
+                    print("Test")
 
                     # If a SQL job is being processed don't start another one
                     if not self._processing_job.is_set():
@@ -191,43 +198,41 @@ class Main:
                         x = "N/A"
                         y = "N/A"
                         z = "N/A"
+                        
                         with self._current_item_list_lock:
                             for item in self._current_item_list:
                                 if item.item_type == requested_item.item_type:
-                                    test = 0
-                                    if (test == 0):
-                                        self._ssh_thread._append_command("PICK 0.23 0 0.11 0 1.4 0")
-                                        test = 1
                                     x = "%0.4f in" % (item.x * size[1] * INCHES_PER_PIXEL)
                                     y = "%0.4f in" % (item.y * size[0] * INCHES_PER_PIXEL)
                                     z = "%0.4f in" % item.z
                                     print("x = %s, y = %s, z = %s" % (x, y, z))
                                     break
+                    
 
                         # Get the image coordinates
                         item_x = self._vision_thread._get_x()
+                        x = item_x
                         item_y = self._vision_thread._get_y()
+                        y = item_y
+                        z = 0
+                        print("Tried to get image coordinates")
 
-                        test = 0
-
-                        if (test == 0):
-                            self._ssh_thread._append_command("PICK 0.22 0 0.11 0 1.4 0")
-                            test = 1
+                        print("Item-X: {}, Item-Y: {}".format(item_x, item_y))
 
                         if ((item_x is not None) and (item_y is not None)):
                             # Translate to arm coordinates
-                            arm_x = float(item_x * ARM_CONSTANT) + OPERATING_BOX_X
-                            arm_y = float(item_y * ARM_CONSTANT) + OPERATING_BOX_Y
+                            arm_x = float((item_x * x_conversion_const - x_shift_const) * x_final_const)
+                            arm_y = float(item_y * y_conversion_const)
                             # PICK X Y Z ROLL PITCH YAW
                             # Arm flips x and y
-                            self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0.11, 0, 1.4, 0))
+                            self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0.1, 0, 1.4, 0))
 
                             # SHIFT AXIS AMOUNT
                             # Move out of the way
-                            self._ssh_thread._append_command("SHIFT {} {}".format("z", 0.2))
+                            self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.1 + .15, 0, 1.4, 0))
 
                             # DROP OFF POINT
-                            # self._ssh_thread._append_command("DROP {} {} {} {} {} {}".format(arm_x, arm_y, 0, 0, 0, 0))
+                            self._ssh_thread._append_command("DROP {} {} {} {} {} {}".format(.007, 0.231, 0.340, 0.066, 1.284, 1.687))
                         
 
                         

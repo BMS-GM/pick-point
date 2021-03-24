@@ -20,9 +20,9 @@ import os
 
 client = paramiko.SSHClient()
 
-hostname = sys.argv[1]
-user = sys.argv[2]
-userpass = sys.argv[3]
+hostname = '10.10.10.10'
+user = 'niryo'
+userpass = 'robotics'
 
 isManual = 1
 
@@ -57,10 +57,16 @@ while (userIn != "QUIT"):
         userIn = userIn.upper()
         stdin.write(userIn)
         stdin.flush()
-        output = stdout.readlines()
+        stdin.channel.shutdown_write()
+        print("Sent?")
+        time.sleep(10)
+        output = "WAIT"
+        print("Read output")
 
+
+        
         # Wait until done is recieved and waiting for next command
-        while (output[-1] != "WAIT"):
+        while (output[-1] == "WAIT"):
             # Don't pull as soon as possible for performance
             # Only pull every second
             time.sleep(1)
