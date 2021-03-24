@@ -2,7 +2,6 @@
 --------------------------------------------------------------------
 Michigan  Technological University: Blue Marble Security Enterprise
 --------------------------------------------------------------------
-
 listenerv2.py
 Author: Corbin Holz
 Date Created: 2/18/2021
@@ -130,6 +129,16 @@ try:
         robot.wait(sleep_time)
         robot.close_gripper(TOOL_GRIPPER_3_ID, max_grip_speed)
 
+    # If SPEED command, update max arm velocity
+    elif (command[0] == "SPEED"):
+        updated_speed = float(command[1]) * 10
+
+        robot.set_arm_max_velocity(updated_speed)
+
+    # If CALIBRATE, set arm velocity to default/max arm velocity (ran on startup)
+    elif command[0] == "CALIBRATE":
+        robot.calibrate_auto()
+        
     # When Done print to standard out
     #print("DONE", file = sys.stdout)
 	print("DONE")

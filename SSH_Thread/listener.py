@@ -134,6 +134,11 @@ try:
             robot.wait(sleep_time)
             robot.close_gripper(TOOL_GRIPPER_3_ID, max_grip_speed)
 
+        #If slider on arm changed set max arm speed to according value
+        elif command[0] == "SPEED":
+            #robot.set_arm_max_velocity(GUI.gui_thread._speed.get())
+        elif command[0] == "AUTOCALIBRATE":
+            #do stuff
         # If quit, stop listening, end program
         elif (command[0] == "QUIT"):
             listening = 0

@@ -29,10 +29,14 @@ STATUS = dict(ERROR=0,
 
 
 class GUI(threading.Thread):
+
+
     def __init__(self):
         """
         Constructor
         """
+
+        scaleValue = 0
 
         # Threading
         threading.Thread.__init__(self)
@@ -109,7 +113,7 @@ class GUI(threading.Thread):
 
         # Setup Window
         self._root.title("pick-point")  # Set title
-        self._root.geometry("400x1100")  # Set fixed resolution to 400x1100
+        self._root.geometry("550x800")  # Set fixed resolution to 400x800
         self._root.resizable(0, 0)  # Don't allow resizing
         self._root.configure(background="gray")
 
@@ -134,37 +138,38 @@ class GUI(threading.Thread):
         # Next Button
         self._next_button_text = tk.StringVar()
         self._update_button = tk.Button(self._root, bg="gray20", textvariable=self._next_button_text, font=self._FONT,
-                                        fg="white", width=8, command=self._button_update)
+                                        fg="white", width=10, command=self._button_update)
         self._next_button_text.set("Update")
-        self._update_button.grid(row=3, column=0)
+        self._update_button.grid(row=1, column=3, padx=30)
 
         # Reset Button
         self._reset_button = tk.Button(self._root, bg="gray20", text="Reset", font=self._FONT,
                                        fg="white", width=8, command=self._button_reset)
-        self._reset_button.grid(row=3, column=1)
+        self._reset_button.grid(row=2, column=3, padx=30)
 
         # Result Label
         self._result = tk.Label(self._root, bg="white", text="", font=self._FONT, fg="white")
-        self._result.grid(row=4, columnspan=2, pady=10)
+        self._result.grid(row=4, column=1, pady=10)
         
-        '''
+
         # Arm Speed Label
         self._speed_static = tk.Label(self._root, bg=self._BG, text="Arm Speed %:", font=self._FONT, anchor="w")
         self._speed_static.grid(row=5, column=0)
 
         # Arm Speed Slider
         self._arm_speed_percentage = tk.IntVar()
-        self._speed = tk.Scale(self._root, bg=self.BG, font=self._FONT, orient=HORIZONTAL, from_=0, to=100,
-                               variable=self._arm_speed_percentage, resolution=5)
+        self._speed = tk.Scale(self._root, bg="gray", font=self._FONT, orient="horizontal", from_=0, to=100,
+                               variable=self._arm_speed_percentage, resolution=5, length=100)
         self._speed.grid(row=5, column=1)
+        self._speed.set(100)
 
         # Stop Button
         self._stop_button_text = tk.StringVar()
         self._stop_button = tk.Button(self._root, bg="gray20", text=self._stop_button_text, font=self._FONT,
                                        fg="white", width=8, command=self._button_stop)
         self._next_button_text.set("Stop")
-        self._stop_button.grid(row=6, columnspan=2)
-        '''
+        self._stop_button.grid(row=4, column=3, columnspan=2, padx=30, pady=10)
+
         # Log Label
         self._log = tk.Label(self._root, bg=self._BG, font=("Times", 14), text="Log:", anchor="w")
         self._log.grid(row=7, columnspan=2, pady=10)
@@ -310,6 +315,13 @@ class GUI(threading.Thread):
             for msg in self._log_messages:
                 log_msg += msg + '\n'
             self._log.configure(text=log_msg)
+    def _check_scale(self):
+        """
+        Function to check slider changes and send arm command
+        """
+        if slideValue != self._speed.get():
+            slideValue = self._speed.get()
+            #send command to arm
 
     def _clear(self):
         """
@@ -326,6 +338,7 @@ if __name__ == '__main__':
     # Setup Logging
     # =================================
     # Create master logger and set global log level
+    '''
     log_dir = "C:\\Users\\jmjerred-adm\\PycharmProjects\\pick-point\\Logs"
     logger = logging.getLogger("GM_Pick_Point")
     logger.setLevel(logging.DEBUG)
@@ -348,15 +361,15 @@ if __name__ == '__main__':
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
     # =====================================================================
-
-    logger.debug('Stating GUI Thread')
+    '''
+    #logger.debug('Stating GUI Thread')
     gui_thread = GUI()
-    logger.debug('HERE')
+    #logger.debug('HERE')
     time.sleep(5)
-    logger.debug('GOT HERE')
+    #logger.debug('GOT HERE')
     gui_thread.set_result(1, item="Sphere", placement="Bin A", x=3, y=4, z=5)
     time.sleep(5)
     gui_thread.terminate()
     gui_thread.join()
-    logger.debug('Child Thread is Dead')
+    #logger.debug('Child Thread is Dead')
     # test.set_image("image.PNG")
