@@ -38,7 +38,8 @@ ARM_CONSTANT = 0.00062927
 x_shift_const = 0.4
 x_conversion_const = x_shift_const/634.5 #Shift amount/middle pixel value
 x_final_const = 0.926277568
-y_conversion_const = 0.0005753
+y_conversion_const = 0.00061
+picked_items = []
                                         #    1  = process the full image (more accurate)
                                         #    <1 = process a smaler version of the image (faster)
 
@@ -130,6 +131,7 @@ class Main:
 
         self._termination_requested_event = threading.Event()
 
+
         self._logger.debug('Threads Initialized')
 
     def main_loop(self):
@@ -144,8 +146,6 @@ class Main:
             self._ssh_thread.start()
             self._ssh_thread._append_command("OPEN")
             self._ssh_thread._append_command("CLOSE")
-            
-            self._ssh_thread._append_command("SPEED 100")
 
             while self._gui_thread.is_alive():      # Keep going until the GUI thread dies
                 vision_task_thread = None
@@ -221,6 +221,35 @@ class Main:
 
                         print("Item-X: {}, Item-Y: {}".format(item_x, item_y))
 
+                        # If recognized items are not empty
+                        if (self.get_current_item_list):
+
+                            selected_item = None
+
+                            # Choose first existing item that has not been picked
+                            for next_item in self.get_current_item_list():
+                                if (next_item.item_type not in (picked_items)):
+                                    selected_item = next_item
+                                    picked_items.append(next_item.item_type)
+                                    break
+
+                            # Prep to create command
+                            if (selected_item not None):
+                                # Translate to arm coordinates
+                                arm_x = float((selected_item.x * x_conversion_const - x_shift_const) * x_final_const)
+                                arm_y = float(selected_item.y * y_conversion_const)
+                                # PICK X Y Z ROLL PITCH YAW
+                                # Arm flips x and y
+                                self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0.1, 0, 1.4, 0))
+
+                                # SHIFT AXIS AMOUNT
+                                # Move out of the way
+                                self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.1 + .15, 0, 1.4, 0))
+
+                                # DROP OFF POINT
+                                self._ssh_thread._append_command("DROP {} {} {} {} {} {}".format(.007, 0.231, 0.340, 0.066, 1.284, 1.687))
+
+                        """
                         if ((item_x is not None) and (item_y is not None)):
                             # Translate to arm coordinates
                             arm_x = float((item_x * x_conversion_const - x_shift_const) * x_final_const)
@@ -235,6 +264,7 @@ class Main:
 
                             # DROP OFF POINT
                             self._ssh_thread._append_command("DROP {} {} {} {} {} {}".format(.007, 0.231, 0.340, 0.066, 1.284, 1.687))
+                        """
 
                         print("-----Printing Item List-----")
                         for testItem in self.get_current_item_list():
@@ -255,7 +285,7 @@ class Main:
                             self._gui_thread.set_result(2, error=message, item=requested_item.item_type,
                                                         placement=requested_item.placement, x=x, y=y, z=z)
 
-                        time.sleep(2)
+                        self._gui_thread.wait_on_next_object_request()
                         self._object_removed_successfully = False
                         self._object_not_found = False
 
