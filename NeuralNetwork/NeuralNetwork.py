@@ -156,6 +156,9 @@ class Network:
         result = []
         num_detections = int(network_output[0][0])
 
+        rows = 1024
+        cols = 1280
+
         for i in range(num_detections):
             class_id = int(network_output[3][0][i])
             score = float(network_output[1][0][i])
@@ -189,6 +192,7 @@ class Network:
         """
         rows = img.shape[0]
         cols = img.shape[1]
+        print("Rows: {} Cols: {}".format(rows, cols))
         result_img = copy.deepcopy(img)
         num_detections = int(network_output[0][0])
         display_all = label == "ALL"
