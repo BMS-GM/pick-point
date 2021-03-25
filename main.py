@@ -234,7 +234,7 @@ class Main:
                                     break
 
                             # Prep to create command
-                            if (selected_item):
+                            if (selected_item is not None):
                                 # Translate to arm coordinates
                                 arm_x = float((selected_item.x * x_conversion_const - x_shift_const) * x_final_const)
                                 arm_y = float(selected_item.y * y_conversion_const)
@@ -250,6 +250,9 @@ class Main:
 
                                 # DROP OFF POINT
                                 self._ssh_thread._append_command("DROP {} {} {} {} {} {}".format(.007, 0.231, 0.340, 0.066, 1.284, 1.687))
+
+                            else:
+                                print("No Objects Identified")
 
 
                         """
