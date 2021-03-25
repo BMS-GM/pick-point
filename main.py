@@ -234,10 +234,11 @@ class Main:
                                     break
 
                             # Prep to create command
-                            if (selected_item not None):
+                            if (selected_item):
                                 # Translate to arm coordinates
                                 arm_x = float((selected_item.x * x_conversion_const - x_shift_const) * x_final_const)
                                 arm_y = float(selected_item.y * y_conversion_const)
+                                print("Appending instructions for {}".format(selected_item.item_type))
                                 # PICK X Y Z ROLL PITCH YAW
                                 # Arm flips x and y
                                 self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0.1, 0, 1.4, 0))
@@ -248,6 +249,7 @@ class Main:
 
                                 # DROP OFF POINT
                                 self._ssh_thread._append_command("DROP {} {} {} {} {} {}".format(.007, 0.231, 0.340, 0.066, 1.284, 1.687))
+
 
                         """
                         if ((item_x is not None) and (item_y is not None)):
@@ -266,11 +268,13 @@ class Main:
                             self._ssh_thread._append_command("DROP {} {} {} {} {} {}".format(.007, 0.231, 0.340, 0.066, 1.284, 1.687))
                         """
 
+                        """
                         print("-----Printing Item List-----")
                         for testItem in self.get_current_item_list():
                             print(testItem.item_type)
 
                         print("-----End of Item List-----")
+                        """
 
                         message = 'Requesting Object: %s' % requested_item.item_type
 
