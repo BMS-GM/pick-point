@@ -280,7 +280,7 @@ class VisionThread(threading.Thread):
 
                 self.img_counter = self.img_counter + 1
 
-                
+
                 # Possible temporary code
                 """
                 system = PySpin.System_GetInstance()
@@ -298,7 +298,7 @@ class VisionThread(threading.Thread):
                 image_cam_0 = drivers[0].get_image(1)[0]
                 image_cam_1 = drivers[1].get_image(1)[0]
                 """
-                
+
 
                 with self._camera_result_lock:
                     self._camera_result = (left, right)
@@ -366,9 +366,9 @@ class VisionThread(threading.Thread):
         ml_items = Network.get_item_locations(ml_results)
         items = []
         for item in ml_items:
-            x = int(item.x * cols)
-            y = int(item.y * rows)
-            z = depth_map[y, x]
+            x = item.x
+            y = item.y
+            z = 0
             item.z = z
             items.append(item)
 
