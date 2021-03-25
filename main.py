@@ -110,11 +110,11 @@ class Main:
         self._logger.debug('Initializing Vision Thread')
         self._vision_thread = VisionThread(LEFT_CAMERA_SERIAL_NUM, RIGHT_CAMERA_SERIAL_NUM, GRAPH_TYPE, LOG_DIR,
                                            IMAGE_DOWNSCALE_RATIO)
-        
+
         # Setup SSH
         self._ssh_thread = SSHThread.SSHThread()
-        
-        
+
+
         # Setup local variables
         self._camera_result = None
         self._camera_result_lock = threading.Lock()
@@ -198,7 +198,7 @@ class Main:
                         x = "N/A"
                         y = "N/A"
                         z = "N/A"
-                        
+
                         with self._current_item_list_lock:
                             for item in self._current_item_list:
                                 if item.item_type == requested_item.item_type:
@@ -207,7 +207,7 @@ class Main:
                                     z = "%0.4f in" % item.z
                                     print("x = %s, y = %s, z = %s" % (x, y, z))
                                     break
-                    
+
 
                         # Get the image coordinates
                         item_x = self._vision_thread._get_x()
@@ -233,9 +233,12 @@ class Main:
 
                             # DROP OFF POINT
                             self._ssh_thread._append_command("DROP {} {} {} {} {} {}".format(.007, 0.231, 0.340, 0.066, 1.284, 1.687))
-                        
 
-                        
+                        print("-----Printing Item List-----")
+                        for testItem in self.get_current_item_list():
+                            print(testItem.item_type)
+
+                        print("-----End of Item List-----")
 
                         message = 'Requesting Object: %s' % requested_item.item_type
 
