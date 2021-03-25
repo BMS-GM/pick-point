@@ -152,6 +152,9 @@ class Network:
 
     @staticmethod
     def get_item_locations(network_output):
+        rows = img.shape[0]
+        cols = img.shape[1]
+
         result = []
         num_detections = int(network_output[0][0])
 
@@ -163,8 +166,13 @@ class Network:
             if score >= MIN_SCORE:
                 class_name = LABEL_MAP_BY_ID[class_id]
 
-                x = ((bbox[1] + bbox[3]) / 2.0) - 0.5   # Get Offset From Center (right is +)
-                y = 0.5 - ((bbox[0] + bbox[2]) / 2.0)   # Get Offset From Center (up is +)
+                new_x = bbox[1] * cols
+                new_y = bbox[0] * rows
+                right = bbox[3] * cols
+                bottom = bbox[2] * rows
+
+                x = int((int(new_x) + int(right)) / 2)
+                y = int((int(new_y) + int(bottom)) / 2)
                 result.append(Item(class_name, x=x, y=y))
         return result
 

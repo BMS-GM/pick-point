@@ -236,8 +236,8 @@ class Main:
                             # Prep to create command
                             if (selected_item):
                                 # Translate to arm coordinates
-                                arm_x = float((selected_item.y * x_conversion_const - x_shift_const) * x_final_const)
-                                arm_y = float(selected_item.x * y_conversion_const)
+                                arm_x = float((selected_item.x * x_conversion_const - x_shift_const) * x_final_const)
+                                arm_y = float(selected_item.y * y_conversion_const)
                                 print("Appending instructions for {} X={} Y={}".format(selected_item.item_type, selected_item.y, selected_item.x))
                                 print("Translated Coordinates: Arm_x: {} Arm_y: {}".format(arm_x, arm_y))
                                 # PICK X Y Z ROLL PITCH YAW
