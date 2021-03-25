@@ -30,6 +30,7 @@ max_velocity = 30
 max_grip_speed = 300
 
 # Calibrate the Arm
+robot.calibrate_auto()
 robot.set_arm_max_velocity(max_velocity)
 
 # Set the TOOL ID
@@ -130,7 +131,7 @@ try:
 
     # If SPEED command, update max arm velocity
     elif (command[0] == "SPEED"):
-        updated_speed = float(command[1]) * 10
+        updated_speed = float(command[1])
 
         robot.set_arm_max_velocity(updated_speed)
 

@@ -144,6 +144,8 @@ class Main:
             self._ssh_thread.start()
             self._ssh_thread._append_command("OPEN")
             self._ssh_thread._append_command("CLOSE")
+            
+            self._ssh_thread._append_command("SPEED 100")
 
             while self._gui_thread.is_alive():      # Keep going until the GUI thread dies
                 vision_task_thread = None
@@ -253,7 +255,7 @@ class Main:
                             self._gui_thread.set_result(2, error=message, item=requested_item.item_type,
                                                         placement=requested_item.placement, x=x, y=y, z=z)
 
-                        self._gui_thread.wait_on_next_object_request()
+                        time.sleep(2)
                         self._object_removed_successfully = False
                         self._object_not_found = False
 
