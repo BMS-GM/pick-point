@@ -285,7 +285,6 @@ class Main:
                             self._gui_thread.set_result(2, error=message, item=requested_item.item_type,
                                                         placement=requested_item.placement, x=x, y=y, z=z)
 
-                        self._gui_thread.wait_on_next_object_request()
                         self._object_removed_successfully = False
                         self._object_not_found = False
 
