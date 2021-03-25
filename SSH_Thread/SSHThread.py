@@ -102,7 +102,7 @@ class SSHThread(threading.Thread):
     input: new_command
     """
     def _append_command(self, new_command):
-        if (new_command not in self._command_list):
+        if (new_command not in self._command_list || new_command[0] == "D"):
             self._command_list.append(new_command)
             print("Appended {}".format(new_command))
 
