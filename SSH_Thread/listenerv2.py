@@ -30,7 +30,6 @@ max_velocity = 30
 max_grip_speed = 300
 
 # Calibrate the Arm
-robot.calibrate_auto()
 robot.set_arm_max_velocity(max_velocity)
 
 # Set the TOOL ID
