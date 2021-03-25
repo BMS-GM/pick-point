@@ -152,8 +152,6 @@ class Network:
 
     @staticmethod
     def get_item_locations(network_output):
-        rows = img.shape[0]
-        cols = img.shape[1]
 
         result = []
         num_detections = int(network_output[0][0])
