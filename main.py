@@ -40,6 +40,13 @@ x_conversion_const = x_shift_const/634.5 #Shift amount/middle pixel value
 x_final_const = 0.926277568
 y_conversion_const = 0.0005753
 picked_items = []
+
+sorting_coords = {
+    "bird":"DROP .007 0.231 0.340 0.066 1.284 1.687",
+    "cat": "DROP .007 0.231 0.340 0.066 1.284 1.687",
+    "dog": "DROP .007 0.231 0.340 0.066 1.284 1.687"
+}
+
                                         #    1  = process the full image (more accurate)
                                         #    <1 = process a smaler version of the image (faster)
 
@@ -238,6 +245,24 @@ class Main:
                                 # Translate to arm coordinates
                                 arm_x = float((selected_item.x * x_conversion_const - x_shift_const) * x_final_const)
                                 arm_y = float(selected_item.y * y_conversion_const)
+                                drop_off = ""
+
+
+                                if (selected_item.item_type.lower().contains('bird')):
+                                    drop_off = sorting_coords['bird']
+
+                                elif (selected_item.item_type.lower().contains('dog')):
+                                    drop_off = sorting_coords['dog']
+
+                                elif (selected_item.item_type.lower().contains('cat')):
+                                    drop_off = sorting_coords['cat']
+
+                                else:
+                                    print("Object was not able to be identified..... Forcing cat....")
+                                    drop_off = sorting_coords['cat']
+
+
+
                                 print("Appending instructions for {} X={} Y={}".format(selected_item.item_type, selected_item.y, selected_item.x))
                                 print("Translated Coordinates: Arm_x: {} Arm_y: {}".format(arm_x, arm_y))
                                 # PICK X Y Z ROLL PITCH YAW
@@ -249,7 +274,7 @@ class Main:
                                 self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.1 + .15, 0, 1.4, 0))
 
                                 # DROP OFF POINT
-                                self._ssh_thread._append_command("DROP {} {} {} {} {} {}".format(.007, 0.231, 0.340, 0.066, 1.284, 1.687))
+                                self._ssh_thread._append_command(drop_off)
 
                             else:
                                 print("No Objects Identified")
