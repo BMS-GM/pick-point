@@ -44,7 +44,8 @@ picked_items = []
 sorting_coords = {
     "bird":"DROP .007 0.231 0.340 0.066 1.284 1.687",
     "cat": "DROP .007 0.231 0.340 0.066 1.284 1.687",
-    "dog": "DROP .007 0.231 0.340 0.066 1.284 1.687"
+    "dog": "DROP .007 0.231 0.340 0.066 1.284 1.687",
+    "home": "MOVE .007 0.231 0.340 0.066 1.284 1.687"
 }
 
                                         #    1  = process the full image (more accurate)
@@ -258,8 +259,8 @@ class Main:
                                     drop_off = sorting_coords['cat']
 
                                 else:
-                                    print("Object was not able to be identified..... Forcing cat....")
-                                    drop_off = sorting_coords['cat']
+                                    print("Object was not able to be identified..... Going Home")
+                                    drop_off = sorting_coords['home']
 
 
 
@@ -275,6 +276,10 @@ class Main:
 
                                 # DROP OFF POINT
                                 self._ssh_thread._append_command(drop_off)
+
+                                # Move Home if drop_off not at Home
+                                if (drop_off != sorting_coords['home']):
+                                    self._ssh_thread._append_command(sorting_coords['home'])
 
                             else:
                                 print("No Objects Identified")
