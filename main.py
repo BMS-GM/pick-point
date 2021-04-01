@@ -152,6 +152,7 @@ class Main:
 
             self._logger.debug('Starting SSH Thread')
             self._ssh_thread.start()
+            self._ssh_thread._append_command(sorting_coords['home'])
             self._ssh_thread._append_command("OPEN")
             self._ssh_thread._append_command("CLOSE")
 

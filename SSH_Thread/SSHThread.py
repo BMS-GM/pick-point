@@ -102,7 +102,7 @@ class SSHThread(threading.Thread):
     input: new_command
     """
     def _append_command(self, new_command):
-        if (new_command not in self._command_list or new_command[0] == "D"):
+        if (new_command not in self._command_list or new_command[0] == "D" or new_command == "MOVE 0.077 0.001 0.159 -0.023 1.322 0.017"):
             self._command_list.append(new_command)
             print("Appended {}".format(new_command))
 
