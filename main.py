@@ -249,13 +249,13 @@ class Main:
                                 drop_off = ""
 
 
-                                if (selected_item.item_type.lower().contains('bird')):
+                                if ('bird' in selected_item.item_type.lower()):
                                     drop_off = sorting_coords['bird']
 
-                                elif (selected_item.item_type.lower().contains('dog')):
+                                elif ('dog' in selected_item.item_type.lower()):
                                     drop_off = sorting_coords['dog']
 
-                                elif (selected_item.item_type.lower().contains('cat')):
+                                elif ('cat' in selected_item.item_type.lower()):
                                     drop_off = sorting_coords['cat']
 
                                 else:
