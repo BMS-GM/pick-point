@@ -24,7 +24,7 @@ robot = NiryoOne()
 sleep_time = 1
 
 # Percent of speed
-max_velocity = 30
+max_velocity = 100
 
 # Speed between 0-1000
 max_grip_speed = 300
@@ -132,7 +132,6 @@ try:
     # If SPEED command, update max arm velocity
     elif (command[0] == "SPEED"):
         updated_speed = float(command[1])
-
         robot.set_arm_max_velocity(updated_speed)
 
     # If CALIBRATE, set arm velocity to default/max arm velocity (ran on startup)
