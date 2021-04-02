@@ -118,7 +118,7 @@ myRight = os.getcwd() + '/calibration/outputR.png'
 imgL = cv2.imread(myLeft,0)
 imgR = cv2.imread(myRight,0)
 
-stereo = cv2.StereoBM_create(numDisparities=16, blockSize=35)
+stereo = cv2.StereoBM_create(numDisparities=256, blockSize=15)
 disparity = stereo.compute(imgL,imgR)
 #disparity = np.uint8(disparity)
 cv2.imwrite(os.getcwd() + '/calibration/depthmap.png', disparity)
