@@ -280,7 +280,7 @@ class Main:
 
                                     # If length of detection box is larger than height
                                     if (selected_item.rot)
-                                        # Value is in radians
+                                        # Value is in radians [90 degrees]
                                         applied_rotation = 1.5708
 
                                     # PICK X Y Z ROLL PITCH YAW
