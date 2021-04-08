@@ -39,6 +39,10 @@ x_shift_const = 0.4
 x_conversion_const = x_shift_const/634.5 #Shift amount/middle pixel value
 x_final_const = 0.926277568
 y_conversion_const = 0.0005753
+min_x_val = -5
+min_y_val = -5
+max_x_val = 3
+max_y_val = 3
 picked_items = []
 
 sorting_coords = {
@@ -266,21 +270,36 @@ class Main:
 
 
                                 print("Appending instructions for {} X={} Y={}".format(selected_item.item_type, selected_item.y, selected_item.x))
+                                
                                 print("Translated Coordinates: Arm_x: {} Arm_y: {}".format(arm_x, arm_y))
-                                # PICK X Y Z ROLL PITCH YAW
-                                # Arm flips x and y
-                                self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0.1, 0, 1.4, 0))
+                                # Check if in bounds
+                                if ((arm_x >= min_x_val and arm_x <= max_x_val) and (arm_y >= min_y_val and arm_y <= max_y_val)):
+                                
+                                    # Default rotation
+                                    applied_rotation = 0
 
-                                # SHIFT AXIS AMOUNT
-                                # Move out of the way
-                                self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.1 + .15, 0, 1.4, 0))
+                                    # If length of detection box is larger than height
+                                    if (selected_item.rot)
+                                        # Value is in radians
+                                        applied_rotation = 1.5708
 
-                                # DROP OFF POINT
-                                self._ssh_thread._append_command(drop_off)
+                                    # PICK X Y Z ROLL PITCH YAW
+                                    # Arm flips x and y
+                                    self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0.1, applied_rotation, 1.4, 0))
 
-                                # Move Home if drop_off not at Home
-                                if (drop_off != sorting_coords['home']):
-                                    self._ssh_thread._append_command(sorting_coords['home'])
+                                    # SHIFT AXIS AMOUNT
+                                    # Move out of the way
+                                    self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.1 + .15, applied_rotation, 1.4, 0))
+
+                                    # DROP OFF POINT
+                                    self._ssh_thread._append_command(drop_off)
+
+                                    # Move Home if drop_off not at Home
+                                    if (drop_off != sorting_coords['home']):
+                                        self._ssh_thread._append_command(sorting_coords['home'])
+
+                                else:
+                                    print("Error appending instructions... Out of Bounds")
 
                             else:
                                 print("No Objects Identified")
