@@ -279,7 +279,7 @@ class Main:
                                     applied_rotation = 0
 
                                     # If length of detection box is larger than height
-                                    if (selected_item.rot)
+                                    if (selected_item.rot):
                                         # Value is in radians [90 degrees]
                                         applied_rotation = 1.5708
 
