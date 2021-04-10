@@ -6,7 +6,7 @@ Michigan  Technological University: Blue Marble Security Enterprise
 
 main.py
 Author: Shaun Flynn
-Date last modified: 4/23/19
+Date last modified: 4/10/21
 """
 
 __author__ = 'Blue Marble Security Enterprise'
@@ -34,15 +34,14 @@ RIGHT_CAMERA_SERIAL_NUM = '18585121'    # Right stereo camera ID
 GRAPH_TYPE = 'SSD_INCEPTION_V2'         # Network graph model to use for object detection
 INCHES_PER_PIXEL = 0.015735782          # Number of inches each pixel represents at the datum
 IMAGE_DOWNSCALE_RATIO = 0.5             # Downscale ratio for machine learning
-ARM_CONSTANT = 0.00062927
 x_shift_const = 0.4
-x_conversion_const = x_shift_const/634.5 #Shift amount/middle pixel value
-x_final_const = 0.926277568
-y_conversion_const = 0.0005753
-min_x_val = -5
-min_y_val = -5
-max_x_val = 3
-max_y_val = 3
+x_conversion_const = x_shift_const/635 #Shift amount/middle pixel value
+x_final_const = 0.992186531
+y_conversion_const = 0.000515
+min_x_val = -0.25
+min_y_val = 0.14
+max_x_val = 0.25
+max_y_val = 0.37
 picked_items = []
 
 sorting_coords = {
@@ -283,8 +282,9 @@ class Main:
                                         # Value is in radians [90 degrees]
                                         applied_rotation = 1.5708
 
-                                    # PICK X Y Z ROLL PITCH YAW
+                                    # MOVE ABOVE THEN PICK X Y Z ROLL PITCH YAW
                                     # Arm flips x and y
+                                    self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.1 + .15, applied_rotation, 1.4, 0))
                                     self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0.1, applied_rotation, 1.4, 0))
 
                                     # SHIFT AXIS AMOUNT
