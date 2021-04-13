@@ -14,7 +14,7 @@ __version__ = '1.0'
 
 
 class Item:
-    def __init__(self, item_type, placement=None, x=None, y=None, z=None):
+    def __init__(self, item_type, placement=None, x=None, y=None, z=None, rot=None):
         """
         Constructor
         :param item_type: A string containing a SQL compatible name fo the item
@@ -28,6 +28,7 @@ class Item:
         self.x = x
         self.y = y
         self.z = z
+        self.rot = rot
 
     @property
     def tuple(self):
@@ -38,4 +39,4 @@ class Item:
 
         :return: a tuple version of the class
         """
-        return self.item_type, self.placement, self.x, self.y, self.z
+        return self.item_type, self.placement, self.x, self.y, self.z, self.rot

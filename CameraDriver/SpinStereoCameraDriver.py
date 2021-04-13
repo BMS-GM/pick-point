@@ -205,7 +205,7 @@ class SpinStereoCameraDriver(StereoCameraThread):
             result = copy.deepcopy(self._acquired_images)
         return result
 
-    def get_mono_images(self, num_images, camera_to_use='RANDOM'):
+    def get_mono_images(self, num_images, camera_to_use='LEFT'):
         """
         External facing method to retrieve images from ONE of the stereo cameras
         :param num_images: Number of images to acquire

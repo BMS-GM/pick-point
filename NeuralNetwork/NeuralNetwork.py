@@ -172,9 +172,19 @@ class Network:
                 right = bbox[3] * cols
                 bottom = bbox[2] * rows
 
+                length = right - new_x
+                height = bottom - new_y
+
+                # Rotation will be 1
+                if (length > height):
+                    rot = 1
+
+                else:
+                    rot = 0
+
                 x = int((int(new_x) + int(right)) / 2)
                 y = int((int(new_y) + int(bottom)) / 2)
-                result.append(Item(class_name, x=x, y=y))
+                result.append(Item(class_name, x=x, y=y, rot=rot))
         return result
 
     @staticmethod
