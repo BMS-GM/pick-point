@@ -17,8 +17,8 @@ import cv2
 from matplotlib import pyplot as plt
 import os
 
-LEFT_PATH = os.getcwd() + '/calibration/no_left.png'
-RIGHT_PATH = os.getcwd() + '/calibration/no_right.png'
+LEFT_PATH = os.getcwd() + '/calibration/newlights_left.png'
+RIGHT_PATH = os.getcwd() + '/calibration/newlights_right.png'
 
 # Instantiate Paths
 leftCalibrationPath = os.getcwd() + '/calibration/cam_0_images/leftCal.npz'
@@ -88,8 +88,7 @@ print("Undistort Left")
 print("roi: " + str(roi))
 x,y,w,h = roi
 ldst = dst[y:y+h, x:x+w]
-#ldst = ldst[250:675, 125:950]
-ldst = ldst[220:505, 210:865]
+#ldst = ldst[250:540, 210:865]
 
 # crop the image
 h,  w = img2.shape[:2]
@@ -103,8 +102,7 @@ print("Undistort Right")
 print("roi: " + str(roi))
 x,y,w,h = roi
 rdst = dst[y:y+h, x:x+w]
-#rdst = rdst[250:675, 125:950]
-rdst = rdst[220:505, 210:865]
+#rdst = rdst[250:540, 210:865]
 
 print("Create Depth Map")
 
@@ -118,7 +116,7 @@ myRight = os.getcwd() + '/calibration/outputR.png'
 imgL = cv2.imread(myLeft,0)
 imgR = cv2.imread(myRight,0)
 
-stereo = cv2.StereoBM_create(numDisparities=16, blockSize=35)
+stereo = cv2.StereoBM_create(numDisparities=64, blockSize=29)
 disparity = stereo.compute(imgL,imgR)
 #disparity = np.uint8(disparity)
 cv2.imwrite(os.getcwd() + '/calibration/depthmap.png', disparity)
