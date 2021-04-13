@@ -289,7 +289,7 @@ class Main:
 
                                     # SHIFT AXIS AMOUNT
                                     # Move out of the way
-                                    self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.1 + .18, applied_rotation, 1.4, 0))
+                                    self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.35, applied_rotation, 1.4, 0))
 
                                     # DROP OFF POINT
                                     self._ssh_thread._append_command(drop_off)
