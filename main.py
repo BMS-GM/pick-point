@@ -24,8 +24,9 @@ import time
 from SQL_Driver import ObjectDB
 from Item import Item
 from VisionThread import VisionThread
-from SSH_Thread import SSHThread
 from GUI import GUI
+
+from pyniryo import *
 
 LOG_LEVEL_CMD = logging.WARNING         # The min log level that will be displayed in the console
 LOG_DIR = 'Logs'                        # Directory to save log files to
@@ -122,10 +123,9 @@ class Main:
         self._logger.debug('Initializing Vision Thread')
         self._vision_thread = VisionThread(LEFT_CAMERA_SERIAL_NUM, RIGHT_CAMERA_SERIAL_NUM, GRAPH_TYPE, LOG_DIR,
                                            IMAGE_DOWNSCALE_RATIO)
-
-        # Setup SSH
-        self._ssh_thread = SSHThread.SSHThread()
-
+        # start TCP connection
+        self.robot = NiryoRobot("10.10.10.10")
+        self.robot.calibrate_auto()
 
         # Setup local variables
         self._camera_result = None
@@ -154,10 +154,11 @@ class Main:
             self._vision_thread.start()
 
             self._logger.debug('Starting SSH Thread')
-            self._ssh_thread.start()
-            self._ssh_thread._append_command(sorting_coords['home'])
-            self._ssh_thread._append_command("OPEN")
-            self._ssh_thread._append_command("CLOSE")
+            #self._ssh_thread.start()
+            #self._ssh_thread._append_command(sorting_coords['home'])
+            #self._ssh_thread._append_command("OPEN")
+            #self._ssh_thread._append_command("CLOSE")
+            self.robot.move_pose(0.2, -0.1, 0.25, 0.0, 1.57, 0.0)
 
             while self._gui_thread.is_alive():      # Keep going until the GUI thread dies
                 vision_task_thread = None
@@ -284,19 +285,25 @@ class Main:
 
                                     # MOVE ABOVE THEN PICK X Y Z ROLL PITCH YAW
                                     # Arm flips x and y
-                                    self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.1 + .18, applied_rotation, 1.4, 0))
-                                    self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0.1, applied_rotation, 1.4, 0))
+                                    self.robot.move_pose(arm_y, arm_x, 0.1 + .18, applied_rotation, 1.4, 0)
+                                    self.robot.release_with_tool()
+                                    #self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.1 + .18, applied_rotation, 1.4, 0))
+                                    self.robot.move_pose(arm_y, arm_x, 0.1, applied_rotation, 1.4, 0)
+                                    self.robot.grasp_with_tool()
+                                    #self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0.1, applied_rotation, 1.4, 0))
+                                    
 
                                     # SHIFT AXIS AMOUNT
                                     # Move out of the way
-                                    self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.35, applied_rotation, 1.4, 0))
+                                    #self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.35, applied_rotation, 1.4, 0))
+                                    self.robot.move_pose(arm_y, arm_x, 0.35, applied_rotation, 1.4, 0)
 
                                     # DROP OFF POINT
-                                    self._ssh_thread._append_command(drop_off)
+                                    #self._ssh_thread._append_command(drop_off)
 
                                     # Move Home if drop_off not at Home
-                                    if (drop_off != sorting_coords['home']):
-                                        self._ssh_thread._append_command(sorting_coords['home'])
+                                    #if (drop_off != sorting_coords['home'][1:]):
+                                        #self._ssh_thread._append_command(sorting_coords['home'])
 
                                 else:
                                     print("Error appending instructions... Out of Bounds")
@@ -362,6 +369,9 @@ class Main:
             self._logger.debug('Joining Vision Thread')
             self._vision_thread.join()
             self._gui_thread.join()
+            
+            # terminate robot connection
+            self.robot.close_connection()
 
     def get_camera_images(self):
         """
