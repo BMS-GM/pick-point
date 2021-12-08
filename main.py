@@ -46,10 +46,10 @@ max_y_val = 0.37
 picked_items = []
 
 sorting_coords = {
-    "bird":"DROP -0.014 0.298 0.25 -0.296 1.530 1.346",
-    "cat": "DROP 0.003 -0.152 0.25 -0.050 1.395 -1.571",
-    "dog": "DROP 0.000 -0.257 0.25 0.070 1.410 -1.496",
-    "home": "MOVE 0.077 0.001 0.159 -0.023 1.322 0.017"
+    "bird": [-0.014, 0.298, 0.25, -0.296, 1.530, 1.346],
+    "cat":  [0.003, -0.152, 0.25, -0.050, 1.395, -1.571],
+    "dog":  [0.000, -0.257, 0.25, 0.070, 1.410, -1.496],
+    "home": [0.12, 0.0, 0.15, 0.0, 1.57, 0.0],
 }
 
                                         #    1  = process the full image (more accurate)
@@ -158,7 +158,7 @@ class Main:
             #self._ssh_thread._append_command(sorting_coords['home'])
             #self._ssh_thread._append_command("OPEN")
             #self._ssh_thread._append_command("CLOSE")
-            self.robot.move_pose(0.2, -0.1, 0.25, 0.0, 1.57, 0.0)
+            self.robot.move_pose(sorting_coords["home"])
 
             while self._gui_thread.is_alive():      # Keep going until the GUI thread dies
                 vision_task_thread = None
@@ -300,9 +300,13 @@ class Main:
 
                                     # DROP OFF POINT
                                     #self._ssh_thread._append_command(drop_off)
+                                    self.robot.move_pose(drop_off)
+                                    self.robot.release_with_tool()
+                                    self.robot.grasp_with_tool()
 
                                     # Move Home if drop_off not at Home
-                                    #if (drop_off != sorting_coords['home'][1:]):
+                                    if (drop_off != sorting_coords['home']):
+                                        self.robot.move_pose(sorting_coords["home"])
                                         #self._ssh_thread._append_command(sorting_coords['home'])
 
                                 else:
