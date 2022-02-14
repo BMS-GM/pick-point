@@ -20,6 +20,7 @@ import datetime
 import traceback
 import copy
 import time
+import configparser
 
 from SQL_Driver import ObjectDB
 from Item import Item
@@ -104,6 +105,9 @@ class Main:
         self._logger.addHandler(file_handler)
         self._logger.addHandler(console_handler)
         # =====================================================================
+
+        # read data from config file
+        self.parse_config()
 
         # Setup GUI
         self._logger.debug('Initializing GUI Thread')
@@ -376,6 +380,46 @@ class Main:
             
             # terminate robot connection
             self.robot.close_connection()
+
+    def parse_config(self):
+        """
+        Helper function to get data from the config file.
+        """
+        self._logger.debug('parsing config file...')
+        config = configparser.ConfigParser()
+        config.read('.config')
+        # check if the config file is empty, if it is then create a skeleton config file then terminate
+        if len(config.sections()) == 0:
+            self._logger.debug('Error! unable to read config file, quitting')
+            config['conversion coordinates'] = {
+                'INCHES_PER_PIXEL': 0.0,
+                'IMAGE_DOWNSCALE_RATIO': 0.0,
+                'x_shift_const': 0.0,
+                'x_conversion_const': 0.0,
+                'x_final_const': 0.0,
+                'y_conversion_const': 0.0,
+                'min_x_val': 0.0,
+                'min_y_val': 0.0,
+                'max_x_val': 0.0,
+                'max_y_val': 0.0,
+            }
+            config_file = open('.config', 'w')
+            config.write(config_file)
+            quit()
+        
+        INCHES_PER_PIXEL = config.getfloat('conversion coordinates', 'INCHES_PER_PIXEL')
+        IMAGE_DOWNSCALE_RATIO = config.getfloat('conversion coordinates', 'IMAGE_DOWNSCALE_RATIO')
+        x_shift_const = config.getfloat('conversion coordinates', 'x_shift_const')
+        x_conversion_const = config.getfloat('conversion coordinates', 'x_conversion_const')
+        x_final_const = config.getfloat('conversion coordinates', 'x_final_const')
+        y_conversion_const = config.getfloat('conversion coordinates', 'y_conversion_const')
+        min_x_val = config.getfloat('conversion coordinates', 'min_x_val')
+        min_y_val = config.getfloat('conversion coordinates', 'min_y_val')
+        max_x_val = config.getfloat('conversion coordinates', 'max_x_val')
+        max_y_val = config.getfloat('conversion coordinates', 'max_y_val')
+
+        self._logger.debug('parsing config file - COMPLETE')
+        return
 
     def get_camera_images(self):
         """
