@@ -34,16 +34,7 @@ LOG_DIR = 'Logs'                        # Directory to save log files to
 LEFT_CAMERA_SERIAL_NUM = '18585124'     # Left stereo camera ID
 RIGHT_CAMERA_SERIAL_NUM = '18585121'    # Right stereo camera ID
 GRAPH_TYPE = 'SSD_INCEPTION_V2'         # Network graph model to use for object detection
-INCHES_PER_PIXEL = 0.015735782          # Number of inches each pixel represents at the datum
 IMAGE_DOWNSCALE_RATIO = 0.5             # Downscale ratio for machine learning
-x_shift_const = 0.4
-x_conversion_const = x_shift_const/640.5 #Shift amount/middle pixel value
-x_final_const = 0.980858545
-y_conversion_const = 0.000515
-min_x_val = -0.25
-min_y_val = 0.14
-max_x_val = 0.25
-max_y_val = 0.37
 picked_items = []
 
 sorting_coords = {
@@ -74,6 +65,18 @@ GUI_MESSAGES = dict(
 
 
 class Main:
+
+    conversion_coords = {
+        'INCHES_PER_PIXEL': 0.0,               # Number of inches each pixel represents at the datum
+        'x_shift_const': 0.0,
+        'x_conversion_const': 0.0,
+        'x_final_const': 0.0,
+        'y_conversion_const': 0.0,
+        'min_x_val': 0.0,
+        'min_y_val': 0.0,
+        'max_x_val': 0.0,
+        'max_y_val': 0.0,     
+    }
 
     def __init__(self):
         """
@@ -221,8 +224,8 @@ class Main:
                         with self._current_item_list_lock:
                             for item in self._current_item_list:
                                 if item.item_type == requested_item.item_type:
-                                    x = "%0.4f in" % (item.x * size[1] * INCHES_PER_PIXEL)
-                                    y = "%0.4f in" % (item.y * size[0] * INCHES_PER_PIXEL)
+                                    x = "%0.4f in" % (item.x * size[1] * self.conversion_coords['INCHES_PER_PIXEL'])
+                                    y = "%0.4f in" % (item.y * size[0] * self.conversion_coords['INCHES_PER_PIXEL'])
                                     z = "%0.4f in" % item.z
                                     print("x = %s, y = %s, z = %s" % (x, y, z))
                                     break
@@ -253,8 +256,7 @@ class Main:
                             # Prep to create command
                             if (selected_item is not None):
                                 # Translate to arm coordinates
-                                arm_x = float((selected_item.x * x_conversion_const - x_shift_const) * x_final_const)
-                                arm_y = float(selected_item.y * y_conversion_const)
+                                arm_x, arm_y = self.get_arm_coordinates(selected_item)
                                 drop_off = ""
 
 
@@ -277,7 +279,10 @@ class Main:
                                 
                                 print("Translated Coordinates: Arm_x: {} Arm_y: {}".format(arm_x, arm_y))
                                 # Check if in bounds
-                                if ((arm_x >= min_x_val and arm_x <= max_x_val) and (arm_y >= min_y_val and arm_y <= max_y_val)):
+                                if (arm_x >= self.conversion_coords['min_x_val']
+                                 and arm_x <= self.conversion_coords['max_x_val']
+                                  and arm_y >= self.conversion_coords['min_y_val']
+                                   and arm_y <= self.conversion_coords['max_y_val']):
                                 
                                     # Default rotation
                                     applied_rotation = 0
@@ -385,41 +390,42 @@ class Main:
         """
         Helper function to get data from the config file.
         """
+        bad_read = False
         self._logger.debug('parsing config file...')
         config = configparser.ConfigParser()
         config.read('.config')
         # check if the config file is empty, if it is then create a skeleton config file then terminate
         if len(config.sections()) == 0:
-            self._logger.debug('Error! unable to read config file, quitting')
-            config['conversion coordinates'] = {
-                'INCHES_PER_PIXEL': 0.0,
-                'IMAGE_DOWNSCALE_RATIO': 0.0,
-                'x_shift_const': 0.0,
-                'x_conversion_const': 0.0,
-                'x_final_const': 0.0,
-                'y_conversion_const': 0.0,
-                'min_x_val': 0.0,
-                'min_y_val': 0.0,
-                'max_x_val': 0.0,
-                'max_y_val': 0.0,
-            }
+            bad_read = True
+            self._logger.debug('Error! config file appears to be empty, creating new file')
+            config['conversion coordinates'] = {}
+            for key in list(self.conversion_coords):
+                config['conversion coordinates'][str(key)] = str(0.0)
             config_file = open('.config', 'w')
             config.write(config_file)
-            quit()
+        # read each value from the config file
+        for key in list(self.conversion_coords):
+            self.conversion_coords[key] = config.getfloat('conversion coordinates', str(key) )
+            if self.conversion_coords[key] == 0.0:
+                print(key + ' in .config is undefined, please add value in .config file')
+                bad_read = True
         
-        INCHES_PER_PIXEL = config.getfloat('conversion coordinates', 'INCHES_PER_PIXEL')
-        IMAGE_DOWNSCALE_RATIO = config.getfloat('conversion coordinates', 'IMAGE_DOWNSCALE_RATIO')
-        x_shift_const = config.getfloat('conversion coordinates', 'x_shift_const')
-        x_conversion_const = config.getfloat('conversion coordinates', 'x_conversion_const')
-        x_final_const = config.getfloat('conversion coordinates', 'x_final_const')
-        y_conversion_const = config.getfloat('conversion coordinates', 'y_conversion_const')
-        min_x_val = config.getfloat('conversion coordinates', 'min_x_val')
-        min_y_val = config.getfloat('conversion coordinates', 'min_y_val')
-        max_x_val = config.getfloat('conversion coordinates', 'max_x_val')
-        max_y_val = config.getfloat('conversion coordinates', 'max_y_val')
-
+        if bad_read == True:
+            self._logger.debug('parsing config file - FAILURE, quitting')
+            quit()
         self._logger.debug('parsing config file - COMPLETE')
         return
+
+    def get_arm_coordinates(self, selected_item):
+        """
+        converts the arm coordinates from camera space to arm space
+        takes a tuple with camera coordinates as input
+        returns two floats in arm coordinates
+        """
+        arm_x = float((selected_item.x * self.conversion_coords['x_conversion_const'] - self.conversion_coords['x_shift_const']) * self.conversion_coords['x_final_const'])
+        arm_y = float(selected_item.y * self.conversion_coords['y_conversion_const'])
+        return arm_x, arm_y
+
 
     def get_camera_images(self):
         """
