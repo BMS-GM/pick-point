@@ -66,16 +66,30 @@ GUI_MESSAGES = dict(
 
 class Main:
 
-    conversion_coords = {
-        'INCHES_PER_PIXEL': 0.0,               # Number of inches each pixel represents at the datum
-        'x_shift_const': 0.0,
-        'x_conversion_const': 0.0,
-        'x_final_const': 0.0,
-        'y_conversion_const': 0.0,
-        'min_x_val': 0.0,
-        'min_y_val': 0.0,
-        'max_x_val': 0.0,
-        'max_y_val': 0.0,     
+    config_variables = {
+        'conversion_coords': {
+            'INCHES_PER_PIXEL': 0.0,
+            'x_shift_const': 0.0,
+            'x_conversion_const': 0.0,
+            'x_final_const': 0.0,
+            'y_conversion_const': 0.0,
+            'min_x_val': 0.0,
+            'min_y_val': 0.0,
+            'max_x_val': 0.0,
+            'max_y_val': 0.0,     
+        },
+        'camera_coordinates': {
+            'north': 0.0,
+            'east':  0.0,
+            'south': 0.0,
+            'west':  0.0,
+        },
+        'arm_coordinates': {
+            'north': 0.0,
+            'east':  0.0,
+            'south': 0.0,
+            'west':  0.0,
+        },
     }
 
     def __init__(self):
@@ -213,29 +227,6 @@ class Main:
 
                         # Get the X, Y, Z coords of the object
                         requested_item = self._sql_result[0]
-                        x = "N/A"
-                        y = "N/A"
-                        z = "N/A"
-
-                        with self._current_item_list_lock:
-                            for item in self._current_item_list:
-                                if item.item_type == requested_item.item_type:
-                                    x = "%0.4f in" % (item.x * size[1] * self.conversion_coords['INCHES_PER_PIXEL'])
-                                    y = "%0.4f in" % (item.y * size[0] * self.conversion_coords['INCHES_PER_PIXEL'])
-                                    z = "%0.4f in" % item.z
-                                    print("x = %s, y = %s, z = %s" % (x, y, z))
-                                    break
-
-
-                        # Get the image coordinates
-                        item_x = self._vision_thread._get_x()
-                        x = item_x
-                        item_y = self._vision_thread._get_y()
-                        y = item_y
-                        z = 0
-                        print("Tried to get image coordinates")
-
-                        print("Item-X: {}, Item-Y: {}".format(item_x, item_y))
 
                         # If recognized items are not empty
                         if (self.get_current_item_list):
@@ -275,10 +266,10 @@ class Main:
                                 
                                 print("Translated Coordinates: Arm_x: {} Arm_y: {}".format(arm_x, arm_y))
                                 # Check if in bounds
-                                if (arm_x >= self.conversion_coords['min_x_val']
-                                 and arm_x <= self.conversion_coords['max_x_val']
-                                  and arm_y >= self.conversion_coords['min_y_val']
-                                   and arm_y <= self.conversion_coords['max_y_val']):
+                                if (arm_x >= self.config_variables['conversion_coords']['min_x_val']
+                                 and arm_x <= self.config_variables['conversion_coords']['max_x_val']
+                                  and arm_y >= self.config_variables['conversion_coords']['min_y_val']
+                                   and arm_y <= self.config_variables['conversion_coords']['max_y_val']):
                                 
                                     # Default rotation
                                     applied_rotation = 0
@@ -360,22 +351,28 @@ class Main:
         self._logger.debug('parsing config file...')
         config = configparser.ConfigParser()
         config.read('.config')
-        # check if the config file is empty, if it is then create a skeleton config file then terminate
-        if len(config.sections()) == 0:
-            bad_read = True
-            self._logger.debug('Error! config file appears to be empty, creating new file')
-            config['conversion coordinates'] = {}
-            for key in list(self.conversion_coords):
-                config['conversion coordinates'][str(key)] = str(0.0)
-            config_file = open('.config', 'w')
-            config.write(config_file)
-        # read each value from the config file
-        for key in list(self.conversion_coords):
-            self.conversion_coords[key] = config.getfloat('conversion coordinates', str(key) )
-            if self.conversion_coords[key] == 0.0:
-                print(key + ' in .config is undefined, please add value in .config file')
+        # for each key to a subdictionary in the config_variables dictionary...
+        for section_name in list(self.config_variables):
+            # check if the subdictionary is found in the config file
+            if section_name not in config.sections():
                 bad_read = True
-        
+                print("Error! section " + section_name + " not found in config file, adding it")
+                # create an instance of the section in the config file for the user to fill out
+                config[section_name] = {}
+                for variable_name in list(self.config_variables[section_name]):
+                    config[section_name][str(variable_name)] = str(self.config_variables[section_name][variable_name])
+                config_file = open('.config', 'w')
+                config.write(config_file)
+
+            # for each key in the subdictionary...
+            for variable_name in list(self.config_variables[section_name]):
+                # retrieve the value from the subdictionary
+                self.config_variables[section_name][variable_name] = config.getfloat(section_name, variable_name)
+                # if the value is 0.0, then report error
+                if self.config_variables[section_name][variable_name] == 0.0:
+                    print(variable_name + ' in .config is undefined, please add value in .config file')
+                    bad_read = True
+
         if bad_read == True:
             self._logger.debug('parsing config file - FAILURE, quitting')
             quit()
@@ -388,8 +385,8 @@ class Main:
         takes a tuple with camera coordinates as input
         returns two floats in arm coordinates
         """
-        arm_x = float((selected_item.x * self.conversion_coords['x_conversion_const'] - self.conversion_coords['x_shift_const']) * self.conversion_coords['x_final_const'])
-        arm_y = float(selected_item.y * self.conversion_coords['y_conversion_const'])
+        arm_x = float((selected_item.x * self.config_variables['conversion_coords']['x_conversion_const'] - self.config_variables['conversion_coords']['x_shift_const']) * self.config_variables['conversion_coords']['x_final_const'])
+        arm_y = float(selected_item.y * self.config_variables['conversion_coords']['y_conversion_const'])
         return arm_x, arm_y
 
 
