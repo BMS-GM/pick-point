@@ -309,17 +309,6 @@ class Main:
 
                         message = 'Requesting Object: %s' % requested_item.item_type
 
-                        # Update GUI based on results
-                        if self._object_removed_successfully:
-                            self._gui_thread.set_result(1, error=message, item=lest_requested_item.item_type,
-                                                        placement=lest_requested_item.placement, x=x, y=y, z=z)
-                        elif self._object_not_found:
-                            self._gui_thread.set_result(0, error="Object Not Found!", item=requested_item.item_type,
-                                                        placement=requested_item.placement, x="N/A", y="N/A", z="N/A")
-                        else:
-                            self._gui_thread.set_result(2, error=message, item=requested_item.item_type,
-                                                        placement=requested_item.placement, x=x, y=y, z=z)
-
                         time.sleep(5)
                         self._object_removed_successfully = False
                         self._object_not_found = False
