@@ -66,18 +66,9 @@ GUI_MESSAGES = dict(
 
 class Main:
 
+    # config_variables: all the variables that need to be read from the config file
+    # each "north, east, south west" coordinate system describes the four bounds according to one device, FLIR camera, Niryo arm, or Zed depth sensor
     config_variables = {
-        'conversion_coords': {
-            'INCHES_PER_PIXEL': 0.0,
-            'x_shift_const': 0.0,
-            'x_conversion_const': 0.0,
-            'x_final_const': 0.0,
-            'y_conversion_const': 0.0,
-            'min_x_val': 0.0,
-            'min_y_val': 0.0,
-            'max_x_val': 0.0,
-            'max_y_val': 0.0,     
-        },
         'camera_coordinates': {
             'north': 0.0,
             'east':  0.0,
@@ -243,7 +234,7 @@ class Main:
                             # Prep to create command
                             if (selected_item is not None):
                                 # Translate to arm coordinates
-                                arm_x, arm_y = self.get_arm_coordinates(selected_item)
+                                arm_x, arm_y = self.convert_coordinates(selected_item, self.config_variables['camera_coordinates'], self.config_variables['arm_coordinates'])
                                 drop_off = ""
 
 
@@ -266,10 +257,10 @@ class Main:
                                 
                                 print("Translated Coordinates: Arm_x: {} Arm_y: {}".format(arm_x, arm_y))
                                 # Check if in bounds
-                                if (arm_x >= self.config_variables['conversion_coords']['min_x_val']
-                                 and arm_x <= self.config_variables['conversion_coords']['max_x_val']
-                                  and arm_y >= self.config_variables['conversion_coords']['min_y_val']
-                                   and arm_y <= self.config_variables['conversion_coords']['max_y_val']):
+                                if (arm_x >= self.config_variables['arm_coordinates']['west']
+                                 and arm_x <= self.config_variables['arm_coordinates']['east']
+                                  and arm_y >= self.config_variables['arm_coordinates']['north']
+                                   and arm_y <= self.config_variables['arm_coordinates']['south']):
                                 
                                     # Default rotation
                                     applied_rotation = 0
@@ -368,16 +359,22 @@ class Main:
         self._logger.debug('parsing config file - COMPLETE')
         return
 
-    def get_arm_coordinates(self, selected_item):
+    def convert_coordinates(self, selected_item, in_coor, out_coor):
         """
-        converts the arm coordinates from camera space to arm space
-        takes a tuple with camera coordinates as input
-        returns two floats in arm coordinates
+        converts coordinates from the in_coor coordinate system to the out_coor coordinate system
+        in_coor and out_coor are both dictionaries with north, east, south, and west values
+        that correspond to the upper, right, lower, and left bounds of the pickable area
+        returns the x and y values of "selected_item" in terms of 
         """
-        arm_x = float((selected_item.x * self.config_variables['conversion_coords']['x_conversion_const'] - self.config_variables['conversion_coords']['x_shift_const']) * self.config_variables['conversion_coords']['x_final_const'])
-        arm_y = float(selected_item.y * self.config_variables['conversion_coords']['y_conversion_const'])
-        return arm_x, arm_y
-
+        # first, convert the x and y coordinates of the selected item so that they are independent of the input coordinate system
+        # mid_x is the x coordinate of the item where 0.0 is the left edge of the pickable area and 1.0 is the right edge of the pickable area
+        # mid_y is the y coordinate of the item where 0.0 is the top edge of the pickable area and 1.0 is the bottom edge of the pickable area
+        mid_x = (selected_item.x - in_coor['west'])  / (in_coor['east'] - in_coor['west'])
+        mid_y = (selected_item.y - in_coor['north']) / (in_coor['south'] - in_coor['north'])
+        # out_x and out_y are the coordinates in terms of the output coordinate system
+        out_x = mid_x * abs(out_coor['east'] - out_coor['west']) + out_coor['west']
+        out_y = mid_y * abs(out_coor['south'] - out_coor['north']) + out_coor['north']
+        return out_x, out_y
 
     def get_camera_images(self):
         """
