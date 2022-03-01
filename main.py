@@ -234,7 +234,9 @@ class Main:
                             # Prep to create command
                             if (selected_item is not None):
                                 # Translate to arm coordinates
-                                arm_x, arm_y = self.convert_coordinates(selected_item, self.config_variables['camera_coordinates'], self.config_variables['arm_coordinates'])
+                                arm_x, arm_y = self.convert_coordinates(selected_item.x, selected_item.y,
+                                 self.config_variables['camera_coordinates'],
+                                  self.config_variables['arm_coordinates'])
                                 drop_off = ""
 
 
@@ -359,7 +361,7 @@ class Main:
         self._logger.debug('parsing config file - COMPLETE')
         return
 
-    def convert_coordinates(self, selected_item, in_coor, out_coor):
+    def convert_coordinates(self, in_x:float, in_y:float, in_coor:dict, out_coor:dict):
         """
         converts coordinates from the in_coor coordinate system to the out_coor coordinate system
         in_coor and out_coor are both dictionaries with north, east, south, and west values
@@ -369,8 +371,8 @@ class Main:
         # first, convert the x and y coordinates of the selected item so that they are independent of the input coordinate system
         # mid_x is the x coordinate of the item where 0.0 is the left edge of the pickable area and 1.0 is the right edge of the pickable area
         # mid_y is the y coordinate of the item where 0.0 is the top edge of the pickable area and 1.0 is the bottom edge of the pickable area
-        mid_x = (selected_item.x - in_coor['west'])  / (in_coor['east'] - in_coor['west'])
-        mid_y = (selected_item.y - in_coor['north']) / (in_coor['south'] - in_coor['north'])
+        mid_x = (in_x - in_coor['west'])  / (in_coor['east'] - in_coor['west'])
+        mid_y = (in_y - in_coor['north']) / (in_coor['south'] - in_coor['north'])
         # out_x and out_y are the coordinates in terms of the output coordinate system
         out_x = mid_x * abs(out_coor['east'] - out_coor['west']) + out_coor['west']
         out_y = mid_y * abs(out_coor['south'] - out_coor['north']) + out_coor['north']
