@@ -28,12 +28,11 @@ import datetime
 import time
 import traceback
 
-from CameraDriver.SpinStereoCameraDriver import SpinStereoCameraDriver
+from CameraDriver.SpinSingleCameraDriver import SpinSingleCameraDriver
 from CameraDriver.SpinCameraDriver import SpinCameraDriver
 from NeuralNetwork import MachineLearningThread
 from Item import Item
 from NeuralNetwork.NeuralNetwork import Network
-from DepthMapDriver.DepthMapThread import DepthMapThread
 
 REMAP_INTERPOLATION = cv2.INTER_LINEAR
 DEPTH_VISUALIZATION_SCALE = 8192 * 2
@@ -46,16 +45,14 @@ class VisionThread(threading.Thread):
     Define the Initialization of the Vision Thread
     self - the definition of the thread
     left_camera_id - the id of the left camera
-    right_camera_id - the id of the right camera
     network_model - the neural network model
     log_dir - Where the log file is stored
     downscale_ratio - How much to scale down the images by
     """
-    def __init__(self, left_camera_id, right_camera_id, network_model, log_dir, downscale_ratio):
+    def __init__(self, left_camera_id, network_model, log_dir, downscale_ratio):
         """
         Constructor
         :param left_camera_id:  ID of the left camera in a stereo camera pair
-        :param right_camera_id: ID of the right camera in a stereo camera pair
         :param network_model:   The type of network model to use for object detection
         :param log_dir:         The directory to place log files in for TensorFlow
         :param downscale_ratio: The image down sampling percentage [1 - 0)
@@ -70,7 +67,7 @@ class VisionThread(threading.Thread):
         self._terminate_thread_event = threading.Event()  # Event used to stop the thread
 
         self._logger.debug('Initializing Camera Thread')
-        self._camera_thread = SpinStereoCameraDriver(left_camera_id, right_camera_id)
+        self._camera_thread = SpinSingleCameraDriver(left_camera_id)
         self._camera_result = None
         self._camera_result_lock = threading.Lock()
 
@@ -85,11 +82,6 @@ class VisionThread(threading.Thread):
         self._iteration = -1        # Skip the first Frame (first frame includes load time)
         self._current_x = None
         self._current_y = None
-
-        self._logger.debug('Initializing Depth Map Thread')
-        self._depth_map_thread = None
-        self._depth_map_result = None
-        self._depth_map_result_lock = threading.Lock()
 
         # visualization settings:
         self._visualization_settings_lock = threading.RLock()
@@ -225,7 +217,6 @@ class VisionThread(threading.Thread):
                 start_time = time.time()
                 images = self._camera_thread.get_stereo_images(1)
                 left = images[0][0]
-                right = images[0][1]
 
                 # If Calibration is needed, collect data
                 calibration = False
@@ -233,23 +224,16 @@ class VisionThread(threading.Thread):
                 # Save images for Calibration
                 if (calibration):
                     img_name1 = os.getcwd() + "\calibration\cam_0_images\cam_0_frame_{}.png".format(self.img_counter)
-                    img_name2 = os.getcwd() + "\calibration\cam_1_images\cam_1_frame_{}.png".format(self.img_counter)
                     cv2.imwrite(img_name1, left)
-                    cv2.imwrite(img_name2, right)
                     leftName = img_name1
-                    rightName = img_name2
 
                 # Grab the images
                 img_name = os.getcwd() + "\images\capture\cam_0_frame_{}.png".format(self.img_counter)
                 cv2.imwrite(img_name, left)
                 leftName = img_name
-                img_name = os.getcwd() + "\images\capture\cam_1_frame_{}.png".format(self.img_counter)
-                cv2.imwrite(img_name, right)
-                rightName = img_name
 
                 # Read Left and right Images
                 imgL = cv2.imread(leftName)
-                imgR = cv2.imread(rightName)
 
                 """
                 # Convert images to arrays
@@ -301,19 +285,13 @@ class VisionThread(threading.Thread):
 
 
                 with self._camera_result_lock:
-                    self._camera_result = (left, right)
-
+                    self._camera_result = (left)
+                
                 # process images
-                self._depth_map_thread = DepthMapThread(left, right)
-
 
                 #self._depth_map_thread = DepthMapThread(leftName, rightName)
                 downscaled_img = cv2.resize(left, (0, 0), fx=self._downscale_ratio, fy=self._downscale_ratio)
                 ml_result = self._machine_learning_thread.process_image(downscaled_img)
-                depth_map = self._depth_map_thread.get_image()
-
-                with self._depth_map_result_lock:
-                    self._depth_map_result = depth_map
 
                 with self._machine_learning_result_lock:
                     self._machine_learning_result = ml_result
@@ -344,9 +322,6 @@ class VisionThread(threading.Thread):
             self._camera_thread.terminate_thread()
             self._camera_thread.join()
             self._logger.debug('Joining Depth Map Thread')
-            if self._depth_map_thread is not None:
-                self._depth_map_thread.terminate_thread()
-                self._depth_map_thread.join()
 
     """
     Process the camera results
@@ -356,10 +331,6 @@ class VisionThread(threading.Thread):
         """
         Process results from the camera
         """
-        depth_map = self.get_depth_map()
-        depth_map = np.array(depth_map)
-        rows = depth_map.shape[0]
-        cols = depth_map.shape[1]
 
         ml_results = self.get_machine_learning_result()
 
@@ -467,7 +438,7 @@ if __name__ == '__main__':
     GRAPH_TYPE = 'SSD_INCEPTION_V2'
 
     logger.debug('Initializing Vision Thread...')
-    visionThread = VisionThread(LEFT_CAMERA_SERIAL_NUM, RIGHT_CAMERA_SERIAL_NUM, GRAPH_TYPE, LOG_DIR)
+    visionThread = VisionThread(LEFT_CAMERA_SERIAL_NUM, GRAPH_TYPE, LOG_DIR)
     logger.debug('Initializing Vision Thread - COMPLETE')
 
     logger.debug('Starting Vision Thread...')

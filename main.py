@@ -133,7 +133,7 @@ class Main:
 
         # Setup Vision Thread
         self._logger.debug('Initializing Vision Thread')
-        self._vision_thread = VisionThread(LEFT_CAMERA_SERIAL_NUM, RIGHT_CAMERA_SERIAL_NUM, GRAPH_TYPE, LOG_DIR,
+        self._vision_thread = VisionThread(LEFT_CAMERA_SERIAL_NUM, GRAPH_TYPE, LOG_DIR,
                                            IMAGE_DOWNSCALE_RATIO)
         # start TCP connection
         self.robot = NiryoRobot("10.10.10.10")
