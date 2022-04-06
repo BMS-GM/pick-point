@@ -31,10 +31,11 @@ from pyniryo import *
 
 LOG_LEVEL_CMD = logging.WARNING         # The min log level that will be displayed in the console
 LOG_DIR = 'Logs'                        # Directory to save log files to
-LEFT_CAMERA_SERIAL_NUM = '18585124'     # Left stereo camera ID
-RIGHT_CAMERA_SERIAL_NUM = '18585121'    # Right stereo camera ID
+CAMERA_SERIAL_NUM = '18585124'          # stereo camera ID
 GRAPH_TYPE = 'SSD_INCEPTION_V2'         # Network graph model to use for object detection
 IMAGE_DOWNSCALE_RATIO = 0.5             # Downscale ratio for machine learning
+                                        #    1  = process the full image (more accurate)
+                                        #    <1 = process a smaler version of the image (faster)
 picked_items = []
 
 sorting_coords = {
@@ -44,8 +45,6 @@ sorting_coords = {
     "home": [0.12, 0.0, 0.15, 0.0, 1.57, 0.0],
 }
 
-                                        #    1  = process the full image (more accurate)
-                                        #    <1 = process a smaler version of the image (faster)
 
 # GUI Message Codes
 GUI_MESSAGES = dict(
@@ -133,7 +132,7 @@ class Main:
 
         # Setup Vision Thread
         self._logger.debug('Initializing Vision Thread')
-        self._vision_thread = VisionThread(LEFT_CAMERA_SERIAL_NUM, GRAPH_TYPE, LOG_DIR,
+        self._vision_thread = VisionThread(CAMERA_SERIAL_NUM, GRAPH_TYPE, LOG_DIR,
                                            IMAGE_DOWNSCALE_RATIO)
         # start TCP connection
         self.robot = NiryoRobot("10.10.10.10")
@@ -423,7 +422,7 @@ class Main:
         """
         Task thread method to call request updated info from the vision thread
         """
-        images = self._vision_thread.get_images()
+        images = self._vision_thread.retrieve_images()
         items = self._vision_thread.get_items()
 
         with self._camera_result_lock:

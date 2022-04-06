@@ -4,9 +4,9 @@
 Michigan  Technological University: Blue Marble Security Enterprise
 --------------------------------------------------------------------
 
-Driver to connect to a stereo pair of Spinnaker compatible cameras
+Driver to connect to a Spinnaker compatible camera
 
-SpinStereoCameraThread.py
+SpinSCameraThread.py
 Author: Shaun Flynn
 Date Last Modified 4/23/2019
 """
@@ -20,20 +20,19 @@ import threading
 import PySpin
 import copy
 
-from CameraDriver.StereoCameraThread import StereoCameraThread
 from CameraDriver.SpinCameraDriver import SpinCameraDriver
 
 
-class SpinSingleCameraDriver(StereoCameraThread):
+class SpinSingleCameraDriver(threading.Thread):
     """
-    Stereo Camera Driver Class Compatible with Spinnaker
+     Camera Driver Class Compatible with Spinnaker
     """
 
-    def __init__(self, left_camera_id):
+    def __init__(self, camera_id):
         """
         Constructor
-        :param left_camera_id: the id of the left camera in a stereo pair
-        :param right_camera_id: the id of the right camera in a stereo pair
+        :param camera_id: the id of the camera
+        
         """
 
         super(SpinSingleCameraDriver, self).__init__()  # Call parent's constructor
@@ -51,16 +50,16 @@ class SpinSingleCameraDriver(StereoCameraThread):
 
         # Spinnaker Objects
         self._system = None
-        self._left_driver = None
+        self._driver = None
 
-        self._init_cameras(left_camera_id)
+        self._init_cameras(camera_id)
 
     def __del__(self):
         """
         Deconstuctor
         Ensure that all system objects are destroyed and all resources are returned to avoid memory leaks
         """
-        del self._left_driver
+        del self._driver
         self._system.ReleaseInstance()
         del self._system
 
@@ -71,11 +70,11 @@ class SpinSingleCameraDriver(StereoCameraThread):
         self._logger.info("Terminating Thread...")
         self._terminate_thread.set()
 
-    def _init_cameras(self, left_camera_id):
+    def _init_cameras(self, camera_id):
         """
         init the camera connections
-        :param left_camera_id: Unique ID of the left camera
-        :param right_camera_id: Unique ID of the Right camera
+        :param camera_id: Unique ID of the camera
+        
         """
 
         # init camera drivers
@@ -88,25 +87,25 @@ class SpinSingleCameraDriver(StereoCameraThread):
             drivers.append(SpinCameraDriver(camera))
         self._logger.info("Initializing Drivers - COMPLETE")
 
-        # Find Left Camera
-        self._logger.info("Finding Left Camera...")
+        # Find Our Camera
+        self._logger.info("Finding Camera...")
         for driver in drivers:
             info = driver.get_info()
-            if info[1] == left_camera_id:
-                self._left_driver = driver
-                self._logger.info("Left Camera - FOUND\n"
+            if info[1] == camera_id:
+                self._driver = driver
+                self._logger.info(" Camera - FOUND\n"
                                   "\t Serial Number: %s\n"
                                   "\t Vendor Name  : %s\n"
                                   "\t Display Name : %s"
                                   % (info[1], info[2], info[3]))
 
-        if self._left_driver is None:
-            self._logger.error("Unable to find Left Camera - EXITING")
+        if self._driver is None:
+            self._logger.error("Unable to find Camera - EXITING")
             self._logger.info("Cleaning Up System ...")
             for driver in drivers:
                 del driver
             del drivers
-            del self._left_driver
+            del self._driver
 
             for camera in cam_list:
                 del camera
@@ -153,18 +152,18 @@ class SpinSingleCameraDriver(StereoCameraThread):
                 self._logger.debug('Processing Request - COMPLETE')
                 self._images_acquired_event.set()
 
-    def get_stereo_images(self, num_images):
+    def get_images(self, num_images):
         """
-        External facing method to get a stereo image pair from the driver thread
-        :param num_images: the number of image pairs
-        :return: A list containing image pair tuples
+        External facing method to get images from the driver thread
+        :param num_images: the number of images
+        :return: A list containing images
         """
 
         # Wait to acquire the thread access lock
-        self._logger.debug('Requesting %d new stereo images' % num_images)
+        self._logger.debug('Requesting %d new images' % num_images)
         with self._lock:
 
-            self._request = (self._get_stereo_images, (num_images,))    # Set request
+            self._request = (self._get_images, (num_images,))           # Set request
             self._images_acquired_event.clear()                         # Clear the acquired event before waiting on it
             self._request_images_event.set()                            # Notify the driver thread that a request has
                                                                         # been made
@@ -172,44 +171,25 @@ class SpinSingleCameraDriver(StereoCameraThread):
             result = copy.deepcopy(self._acquired_images)
         return result
 
-    def get_mono_images(self, num_images, camera_to_use='LEFT'):
+    def _get_images(self, num_images):
         """
-        External facing method to retrieve images from ONE of the stereo cameras
-        :param num_images: Number of images to acquire
-        :param camera_to_use: Which camera should be used to get the images
+        Internal facing method to get images
+        :param num_images: the number of images to get
         :return: A list of images
         """
-        # Wait to acquire the thread access lock
-        self._logger.debug('Requesting %d new mono images from %s camera' % (num_images, camera_to_use))
-        with self._lock:
-            self._request = (self._get_mono_images, (num_images, camera_to_use))    # Set request
-            self._images_acquired_event.clear()                                     # Clear the acquired event before
-                                                                                    # waiting on it
-            self._request_images_event.set()                                        # Notify the driver thread that a
-                                                                                    # request has been made
-            self._images_acquired_event.wait()                                      # Wait for request to be processed
-            result = copy.deepcopy(self._acquired_images)
-        return result
-
-    def _get_stereo_images(self, num_images):
-        """
-        Internal facing method to get a stereo image pair
-        :param num_images: the number of PAIRS to get
-        :return: A list of image pair tuples
-        """
-        self._logger.info("Acquiring %d stereo image pairs..." % num_images)
+        self._logger.info("Acquiring %d images..." % num_images)
         result = []
-        images_left = num_images
-        while images_left > 0:
-            # get left image
+        images = num_images
+        while images > 0:
+            # get image
             try:
-                left_image = self._left_driver.get_image(1)[0]
+                image = self._driver.get_image(1)[0]
             except IndexError:
                 continue
 
-            result.append((left_image,))
-            images_left -= 1
+            result.append(image)
+            images -= 1
 
-        self._logger.info("Acquiring %d stereo image pairs - COMPLETE" % num_images)
+        self._logger.info("Acquiring %d simages - COMPLETE" % num_images)
         self._acquired_images = result
 
