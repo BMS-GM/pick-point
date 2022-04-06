@@ -26,6 +26,7 @@ from SQL_Driver import ObjectDB
 from Item import Item
 from VisionThread import VisionThread
 from GUI import GUI
+from ZEDMiniDriver import ZEDMiniDriver
 
 from pyniryo import *
 
@@ -72,14 +73,20 @@ class Main:
             'north': 0.0,
             'east':  0.0,
             'south': 0.0,
-            'west':  0.0,
+            'west':  0.0
         },
         'arm_coordinates': {
             'north': 0.0,
             'east':  0.0,
             'south': 0.0,
-            'west':  0.0,
+            'west':  0.0
         },
+        'zed_coordinates': {
+            'north': 0.0,
+            'east':  0.0,
+            'south': 0.0,
+            'west':  0.0
+        }
     }
 
     def __init__(self):
@@ -137,6 +144,10 @@ class Main:
         # start TCP connection
         self.robot = NiryoRobot("10.10.10.10")
         self.robot.calibrate_auto()
+        
+        # Initialize ZED Mini Driver
+        self._logger.debug("Initializing ZED Mini Driver")
+        self._zed_driver = ZEDMiniDriver()
 
         # Setup local variables
         self._camera_result = None
@@ -219,91 +230,104 @@ class Main:
                         requested_item = self._sql_result[0]
 
                         # If recognized items are not empty
-                        if (self.get_current_item_list):
+                        if (not self.get_current_item_list): #Modified with continue
 
-                            selected_item = None
+                            self.main_loop_helper(requested_item)
+                            continue
 
-                            # Choose first existing item that has not been picked
-                            for next_item in self.get_current_item_list():
-                                if (next_item.item_type not in (picked_items)):
-                                    selected_item = next_item
-                                    picked_items.append(next_item.item_type)
-                                    break
+                        selected_item = None
+                        
 
-                            # Prep to create command
-                            if (selected_item is not None):
-                                # Translate to arm coordinates
-                                arm_x, arm_y = self.convert_coordinates(selected_item.x, selected_item.y,
-                                 self.config_variables['camera_coordinates'],
-                                  self.config_variables['arm_coordinates'])
-                                drop_off = ""
+                        # Choose first existing item that has not been picked
+                        for next_item in self.get_current_item_list():
+                            if (next_item.item_type not in (picked_items)):
+                                selected_item = next_item
+                                picked_items.append(next_item.item_type)
+                                break
 
+                        # Prep to create command
+                        if (selected_item is None): #Modified with continue
 
-                                if ('bird' in selected_item.item_type.lower()):
-                                    drop_off = sorting_coords['bird']
+                            print("No Objects Identified")
 
-                                elif ('dog' in selected_item.item_type.lower()):
-                                    drop_off = sorting_coords['dog']
+                            self.main_loop_helper(requested_item)
+                            continue
 
-                                elif ('cat' in selected_item.item_type.lower()):
-                                    drop_off = sorting_coords['cat']
-
-                                else:
-                                    print("Object was not able to be identified..... Going Home")
-                                    drop_off = sorting_coords['home']
+                        # Translate to arm coordinates
+                        arm_x, arm_y = self.convert_coordinates(selected_item.x, selected_item.y,
+                            self.config_variables['camera_coordinates'],
+                            self.config_variables['arm_coordinates'])
+                        drop_off = ""
 
 
+                        if ('bird' in selected_item.item_type.lower()):
+                            drop_off = sorting_coords['bird']
 
-                                print("Appending instructions for {} X={} Y={}".format(selected_item.item_type, selected_item.x, selected_item.y))
-                                
-                                print("Translated Coordinates: Arm_x: {} Arm_y: {}".format(arm_x, arm_y))
-                                # Check if in bounds
-                                if (arm_x >= self.config_variables['arm_coordinates']['west']
-                                 and arm_x <= self.config_variables['arm_coordinates']['east']
-                                  and arm_y >= self.config_variables['arm_coordinates']['north']
-                                   and arm_y <= self.config_variables['arm_coordinates']['south']):
-                                
-                                    # Default rotation
-                                    applied_rotation = 0
+                        elif ('dog' in selected_item.item_type.lower()):
+                            drop_off = sorting_coords['dog']
 
-                                    # If length of detection box is larger than height
-                                    if (selected_item.rot):
-                                        # Value is in radians [90 degrees]
-                                        applied_rotation = 1.5708
+                        elif ('cat' in selected_item.item_type.lower()):
+                            drop_off = sorting_coords['cat']
 
-                                    # MOVE ABOVE THEN PICK X Y Z ROLL PITCH YAW
-                                    # Arm flips x and y
-                                    self.robot.move_pose(arm_y, arm_x, 0.1 + .18, applied_rotation, 1.4, 0)
-                                    self.robot.release_with_tool()
+                        else:
+                            print("Object was not able to be identified..... Going Home")
+                            drop_off = sorting_coords['home']
 
-                                    self.robot.move_pose(arm_y, arm_x, 0.1, applied_rotation, 1.4, 0)
-                                    self.robot.grasp_with_tool()
-                                    
 
-                                    # SHIFT AXIS AMOUNT
-                                    # Move out of the way
-                                    self.robot.move_pose(arm_y, arm_x, 0.35, applied_rotation, 1.4, 0)
 
-                                    # DROP OFF POINT
-                                    self.robot.move_pose(drop_off)
-                                    self.robot.release_with_tool()
-                                    self.robot.grasp_with_tool()
+                        print("Appending instructions for {} X={} Y={}".format(selected_item.item_type, selected_item.x, selected_item.y))
+                        
+                        print("Translated Coordinates: Arm_x: {} Arm_y: {}".format(arm_x, arm_y))
+                        # Check if in bounds
+                        if (not (arm_x >= self.config_variables['arm_coordinates']['west'] #Modified with continue
+                            and arm_x <= self.config_variables['arm_coordinates']['east']
+                            and arm_y >= self.config_variables['arm_coordinates']['north']
+                            and arm_y <= self.config_variables['arm_coordinates']['south'])):
+                        
+                            self.main_loop_helper(requested_item)
+                            continue
 
-                                    # Move Home if drop_off not at Home
-                                    if (drop_off != sorting_coords['home']):
-                                        self.robot.move_pose(sorting_coords["home"])
+                        zed_x, zed_y = self.convert_coordinates(selected_item.x, selected_item.y,
+                            self.config_variables['camera_coordinates'],
+                            self.config_variables['zed_coordinates'])
+                        print(f"zed x, y : {zed_x}, {zed_y}")
+                        arm_z = self._zed_driver.get_object_height(zed_x, zed_y)
+                        print(f"height: {arm_z}")
 
-                                else:
-                                    print("Error appending instructions... Out of Bounds")
+                        # Default rotation
+                        applied_rotation = 0
 
-                            else:
-                                print("No Objects Identified")
+                        # If length of detection box is larger than height
+                        if (selected_item.rot):
+                            # Value is in radians [90 degrees]
+                            applied_rotation = 1.5708
 
-                        message = 'Requesting Object: %s' % requested_item.item_type
+                        # MOVE ABOVE THEN PICK X Y Z ROLL PITCH YAW
+                        # Arm flips x and y
+                        self.robot.move_pose(arm_y, arm_x, arm_z + .18, applied_rotation, 1.4, 0)
+                        self.robot.release_with_tool()
 
-                        time.sleep(5)
-                        self._object_removed_successfully = False
-                        self._object_not_found = False
+                        self.robot.move_pose(arm_y, arm_x, arm_z, applied_rotation, 1.4, 0)
+                        self.robot.grasp_with_tool()
+                        
+
+                        # SHIFT AXIS AMOUNT
+                        # Move out of the way
+                        self.robot.move_pose(arm_y, arm_x, arm_z + 0.2, applied_rotation, 1.4, 0)
+
+                        # DROP OFF POINT
+                        self.robot.move_pose(drop_off)
+                        self.robot.release_with_tool()
+                        self.robot.grasp_with_tool()
+
+                        # Move Home if drop_off not at Home
+                        if (drop_off != sorting_coords['home']):
+                            self.robot.move_pose(sorting_coords["home"])
+
+                        else:
+                            print("Error appending instructions... Out of Bounds")
+
+                        self.main_loop_helper(requested_item)
 
         except Exception:
             tb = traceback.format_exc()
@@ -512,6 +536,15 @@ class Main:
                 self._sql_result.remove(self._sql_result[0])
             self._object_removed_successfully = True
         return msg
+
+    def main_loop_helper(self, requested_item):
+        """
+        Helper function for some repeated end of loop code.
+        """
+        message = 'Requesting Object: %s' % requested_item.item_type
+        time.sleep(5)
+        self._object_removed_successfully = False
+        self._object_not_found = False
 
 
 if __name__ == '__main__':
