@@ -179,155 +179,95 @@ class Main:
             self.robot.move_pose(sorting_coords["home"])
 
             while self._gui_thread.is_alive():      # Keep going until the GUI thread dies
-                vision_task_thread = None
-                sql_task_thread = None
+                # create and run the two task threads to retrieve the vision and machine learning results
                 try:
-                    vision_task_thread = threading.Thread(target=self._call_vision_thread())
-                    vision_task_thread.start()
-
-                    print("Test")
-
-                    # If a SQL job is being processed don't start another one
-                    if not self._processing_job.is_set():
-                        sql_task_thread = threading.Thread(target=self._call_sql_thread())
-                        sql_task_thread.start()
-
+                    sql_task_thread_is_still_running = self.run_vision_and_sql_task_threads()
+                    if sql_task_thread_is_still_running:
+                        continue
                 except Exception as e:
-                    # on an error join the task threads
-                    if vision_task_thread is not None:
-                        vision_task_thread.join()
-
-                    if sql_task_thread is not None:
-                        sql_task_thread.join()
-
                     raise Exception(e)
+
+                # If a SQL job is being processed then continue to processes that job
+                lest_requested_item = self._sql_result[0]
+                msgs = self._process_sql_job()              # Get messages from the processing
+
+                # Log all messages to the GUI
+                for msg in msgs:
+                    text = list(GUI_MESSAGES.keys())[list(GUI_MESSAGES.values()).index(msg[0])]
+                    text = "%s : %s" % (text, msg[1].item_type)
+                    self._gui_thread.add_msg_to_log(text)
+
+                size = (0, 0)
+                with self._camera_result_lock:
+                    if self._camera_result is not None:
+                        image_0 = self._camera_result[0]
+                        size = image_0.shape
+
+                # Get the X, Y, Z coords of the object
+                requested_item = self._sql_result[0]
+
+                # If recognized items are not empty
+                if (not self.get_current_item_list): #Modified with continue
+
+                    self.main_loop_helper(requested_item)
+                    continue
+
+                selected_item = None
+                
+
+                # Choose first existing item that has not been picked
+                for next_item in self.get_current_item_list():
+                    if (next_item.item_type not in (picked_items)):
+                        selected_item = next_item
+                        picked_items.append(next_item.item_type)
+                        break
+
+                # Prep to create command
+                if (selected_item is None): #Modified with continue
+
+                    print("No Objects Identified")
+
+                    self.main_loop_helper(requested_item)
+                    continue
+
+                # Translate to arm coordinates
+                arm_x, arm_y = self.convert_coordinates(selected_item.x, selected_item.y,
+                    self.config_variables['camera_coordinates'],
+                    self.config_variables['arm_coordinates'])
+                
+                # get the coordinates of the drop off location for the identified object
+                drop_off = ""
+                if ('bird' in selected_item.item_type.lower()):
+                    drop_off = sorting_coords['bird']
+                elif ('dog' in selected_item.item_type.lower()):
+                    drop_off = sorting_coords['dog']
+                elif ('cat' in selected_item.item_type.lower()):
+                    drop_off = sorting_coords['cat']
                 else:
-                    # Join Task Threads
-                    if vision_task_thread is not None:
-                        vision_task_thread.join()
+                    print("Object was not able to be identified..... Going Home")
+                    drop_off = sorting_coords['home']
 
-                    if sql_task_thread is not None:
-                        sql_task_thread.join()
-                        self._processing_job.set()
-                    else:
-                        # If a SQL job is being processed then continue to processes that job
-                        lest_requested_item = self._sql_result[0]
-                        msgs = self._process_sql_job()              # Get messages from the processing
+                print("Appending instructions for {} X={} Y={}".format(selected_item.item_type, selected_item.x, selected_item.y))
+                
+                print("Translated Coordinates: Arm_x: {} Arm_y: {}".format(arm_x, arm_y))
 
-                        # Log all messages to the GUI
-                        for msg in msgs:
-                            text = list(GUI_MESSAGES.keys())[list(GUI_MESSAGES.values()).index(msg[0])]
-                            text = "%s : %s" % (text, msg[1].item_type)
-                            self._gui_thread.add_msg_to_log(text)
+                zed_x, zed_y = self.convert_coordinates(selected_item.x, selected_item.y,
+                    self.config_variables['camera_coordinates'],
+                    self.config_variables['zed_coordinates'])
+                print(f"zed x, y : {zed_x}, {zed_y}")
+                arm_z = self._zed_driver.get_object_height(zed_x, zed_y)
+                print(f"height: {arm_z}")
 
-                        size = (0, 0)
-                        with self._camera_result_lock:
-                            if self._camera_result is not None:
-                                image_0 = self._camera_result[0]
-                                size = image_0.shape
+                # The rotation of the end effector of the robot arm, will be either vertical or horizontal
+                applied_rotation = 0
+                # If length of detection box is larger than height
+                if (selected_item.rot):
+                    # Value is in radians [90 degrees]
+                    applied_rotation = 1.5708
+                
+                self.pick_and_place(arm_x, arm_y, arm_z, applied_rotation, drop_off)
 
-                        # Get the X, Y, Z coords of the object
-                        requested_item = self._sql_result[0]
-
-                        # If recognized items are not empty
-                        if (not self.get_current_item_list): #Modified with continue
-
-                            self.main_loop_helper(requested_item)
-                            continue
-
-                        selected_item = None
-                        
-
-                        # Choose first existing item that has not been picked
-                        for next_item in self.get_current_item_list():
-                            if (next_item.item_type not in (picked_items)):
-                                selected_item = next_item
-                                picked_items.append(next_item.item_type)
-                                break
-
-                        # Prep to create command
-                        if (selected_item is None): #Modified with continue
-
-                            print("No Objects Identified")
-
-                            self.main_loop_helper(requested_item)
-                            continue
-
-                        # Translate to arm coordinates
-                        arm_x, arm_y = self.convert_coordinates(selected_item.x, selected_item.y,
-                            self.config_variables['camera_coordinates'],
-                            self.config_variables['arm_coordinates'])
-                        drop_off = ""
-
-
-                        if ('bird' in selected_item.item_type.lower()):
-                            drop_off = sorting_coords['bird']
-
-                        elif ('dog' in selected_item.item_type.lower()):
-                            drop_off = sorting_coords['dog']
-
-                        elif ('cat' in selected_item.item_type.lower()):
-                            drop_off = sorting_coords['cat']
-
-                        else:
-                            print("Object was not able to be identified..... Going Home")
-                            drop_off = sorting_coords['home']
-
-
-
-                        print("Appending instructions for {} X={} Y={}".format(selected_item.item_type, selected_item.x, selected_item.y))
-                        
-                        print("Translated Coordinates: Arm_x: {} Arm_y: {}".format(arm_x, arm_y))
-                        # Check if in bounds
-                        if (not (arm_x >= self.config_variables['arm_coordinates']['west'] #Modified with continue
-                            and arm_x <= self.config_variables['arm_coordinates']['east']
-                            and arm_y >= self.config_variables['arm_coordinates']['north']
-                            and arm_y <= self.config_variables['arm_coordinates']['south'])):
-                        
-                            self.main_loop_helper(requested_item)
-                            continue
-
-                        zed_x, zed_y = self.convert_coordinates(selected_item.x, selected_item.y,
-                            self.config_variables['camera_coordinates'],
-                            self.config_variables['zed_coordinates'])
-                        print(f"zed x, y : {zed_x}, {zed_y}")
-                        arm_z = self._zed_driver.get_object_height(zed_x, zed_y)
-                        print(f"height: {arm_z}")
-
-                        # Default rotation
-                        applied_rotation = 0
-
-                        # If length of detection box is larger than height
-                        if (selected_item.rot):
-                            # Value is in radians [90 degrees]
-                            applied_rotation = 1.5708
-
-                        # MOVE ABOVE THEN PICK X Y Z ROLL PITCH YAW
-                        # Arm flips x and y
-                        self.robot.move_pose(arm_y, arm_x, arm_z + .18, applied_rotation, 1.4, 0)
-                        self.robot.release_with_tool()
-
-                        self.robot.move_pose(arm_y, arm_x, arm_z, applied_rotation, 1.4, 0)
-                        self.robot.grasp_with_tool()
-                        
-
-                        # SHIFT AXIS AMOUNT
-                        # Move out of the way
-                        self.robot.move_pose(arm_y, arm_x, arm_z + 0.2, applied_rotation, 1.4, 0)
-
-                        # DROP OFF POINT
-                        self.robot.move_pose(drop_off)
-                        self.robot.release_with_tool()
-                        self.robot.grasp_with_tool()
-
-                        # Move Home if drop_off not at Home
-                        if (drop_off != sorting_coords['home']):
-                            self.robot.move_pose(sorting_coords["home"])
-
-                        else:
-                            print("Error appending instructions... Out of Bounds")
-
-                        self.main_loop_helper(requested_item)
+                self.main_loop_helper(requested_item)
 
         except Exception:
             tb = traceback.format_exc()
@@ -383,6 +323,37 @@ class Main:
             quit()
         self._logger.debug('parsing config file - COMPLETE')
         return
+    
+    def run_vision_and_sql_task_threads(self):
+        """
+        runs the vision task thread and sql task thread
+        """
+        vision_task_thread = None
+        sql_task_thread = None
+        try:
+            vision_task_thread = threading.Thread(target=self._call_vision_thread())
+            vision_task_thread.start()
+            # If a SQL job is being processed don't start another one
+            if not self._processing_job.is_set():
+                sql_task_thread = threading.Thread(target=self._call_sql_thread())
+                sql_task_thread.start()
+        except Exception as e:
+            # on an error join the task threads
+            if vision_task_thread is not None:
+                vision_task_thread.join()
+            if sql_task_thread is not None:
+                sql_task_thread.join()
+            raise Exception(e)
+        else:
+            # Join Task Threads
+            if vision_task_thread is not None:
+                vision_task_thread.join()
+            if sql_task_thread is not None:
+                sql_task_thread.join()
+                self._processing_job.set()
+                return True
+            else:
+                return False
 
     def convert_coordinates(self, in_x:float, in_y:float, in_coor:dict, out_coor:dict):
         """
@@ -400,6 +371,45 @@ class Main:
         out_x = mid_x * abs(out_coor['east'] - out_coor['west']) + out_coor['west']
         out_y = mid_y * abs(out_coor['south'] - out_coor['north']) + out_coor['north']
         return out_x, out_y
+
+    def pick_and_place(self, arm_x:float, arm_y:float, arm_z:float, applied_rotation:float, drop_off):
+        """
+        sends all the commands to the robot to move it to the correct location, pick up the item, and drop it off at the correct location
+        :arm_x: the x coordinate of the object that needs to be picked up, in terms of the coordinate system of the robot
+        :arm_y: the y coordinate of the object that needs to be picked up, in terms of the coordinate system of the robot
+        :arm_z: the z coordinate of the object that needs to be picked up, in terms of the coordinate system of the robot
+        :applied_rotation: the rotation of the robot end effector, in radians. It will either be horizontal (0.0) or vertical (1.5708)
+        :drop_off: a list of the coordinate that the picked item needs to be dropped off at. It will be one of the values of the sorting_coordinates dictionary
+        """
+
+        vertical_offset = 0.2 # the amount that the arm will 'hover' over the selected item
+
+        # NOTE The coordinate values given to the robot are X Y Z ROLL PITCH YAW
+        # NOTE The arm flips x and y
+
+        # check if the object is within the bounds of the pickable area
+        if (not (arm_x >= self.config_variables['arm_coordinates']['west']
+                and arm_x <= self.config_variables['arm_coordinates']['east']
+                    and arm_y >= self.config_variables['arm_coordinates']['north']
+                        and arm_y <= self.config_variables['arm_coordinates']['south'])):
+            print("Error appending instructions... Out of Bounds")
+            # TODO self.main_loop_helper(requested_item)
+            return
+
+        # Move above the selected object
+        self.robot.move_pose(arm_y, arm_x, arm_z + vertical_offset, applied_rotation, 1.4, 0)
+        self.robot.release_with_tool()
+        # grab the selected object
+        self.robot.move_pose(arm_y, arm_x, arm_z, applied_rotation, 1.4, 0)
+        self.robot.grasp_with_tool()
+        # Move the robot back up above the pickable area
+        self.robot.move_pose(arm_y, arm_x, arm_z + vertical_offset, applied_rotation, 1.4, 0)
+        # Move to the drop off point and release the item
+        self.robot.move_pose(drop_off)
+        self.robot.release_with_tool()
+        self.robot.grasp_with_tool()
+        # Move Home
+        self.robot.move_pose(sorting_coords["home"])
 
     def get_camera_images(self):
         """
