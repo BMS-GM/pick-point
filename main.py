@@ -179,18 +179,21 @@ class Main:
             self.robot.move_pose(sorting_coords["home"])
 
             while self._gui_thread.is_alive():      # Keep going until the GUI thread dies
+                # NOTE currently the GUI thread does not die when the GUI is closed, instead the GUI thread reopens the window
+                
                 # create and run the two task threads to retrieve the vision and machine learning results
+                # if the task threads are successfully run, then the rest of the main loop will execute
                 try:
                     sql_task_thread_is_still_running = self.run_vision_and_sql_task_threads()
                     if sql_task_thread_is_still_running:
-                        continue
+                        continue # if the SQL task thread hasn't completed yet, then the rest of the main loop will not execute
                 except Exception as e:
-                    raise Exception(e)
+                    raise Exception(e) # if the task threads throw an error, the program will quit
 
+                # retrieve the result of the machine learning query
                 # If a SQL job is being processed then continue to processes that job
                 lest_requested_item = self._sql_result[0]
                 msgs = self._process_sql_job()              # Get messages from the processing
-
                 # Log all messages to the GUI
                 for msg in msgs:
                     text = list(GUI_MESSAGES.keys())[list(GUI_MESSAGES.values()).index(msg[0])]
@@ -203,40 +206,35 @@ class Main:
                         image_0 = self._camera_result[0]
                         size = image_0.shape
 
-                # Get the X, Y, Z coords of the object
+                # Get the X, Y coords of the object
                 requested_item = self._sql_result[0]
 
-                # If recognized items are not empty
+                # if there is no current item to pick up, then go back to the start of the main loop
                 if (not self.get_current_item_list): #Modified with continue
-
                     self.main_loop_helper(requested_item)
                     continue
 
-                selected_item = None
-                
-
+                # retrieve the item to be picked up, and store it in selected_item
+                selected_item = None # the item to be picked up, as identified by the machine learning thread
                 # Choose first existing item that has not been picked
                 for next_item in self.get_current_item_list():
                     if (next_item.item_type not in (picked_items)):
                         selected_item = next_item
                         picked_items.append(next_item.item_type)
                         break
-
-                # Prep to create command
+                # sanity check, if no item was identified then go back to the start of the main loop
                 if (selected_item is None): #Modified with continue
-
                     print("No Objects Identified")
-
                     self.main_loop_helper(requested_item)
                     continue
 
-                # Translate to arm coordinates
+                # Translate the coordinates of the selected_item to the coordinate system that the arm uses
                 arm_x, arm_y = self.convert_coordinates(selected_item.x, selected_item.y,
                     self.config_variables['camera_coordinates'],
                     self.config_variables['arm_coordinates'])
                 
                 # get the coordinates of the drop off location for the identified object
-                drop_off = ""
+                drop_off = "" # a list of the coordinates of the drop off location that can be sent to the robot
                 if ('bird' in selected_item.item_type.lower()):
                     drop_off = sorting_coords['bird']
                 elif ('dog' in selected_item.item_type.lower()):
@@ -248,13 +246,15 @@ class Main:
                     drop_off = sorting_coords['home']
 
                 print("Appending instructions for {} X={} Y={}".format(selected_item.item_type, selected_item.x, selected_item.y))
-                
                 print("Translated Coordinates: Arm_x: {} Arm_y: {}".format(arm_x, arm_y))
 
+                # find the depth (z value) of the object
+                # translate the position of the object to the coordinate system of the Zed Mini
                 zed_x, zed_y = self.convert_coordinates(selected_item.x, selected_item.y,
                     self.config_variables['camera_coordinates'],
                     self.config_variables['zed_coordinates'])
                 print(f"zed x, y : {zed_x}, {zed_y}")
+                # retrieve the height from the height map at the position of the object
                 arm_z = self._zed_driver.get_object_height(zed_x, zed_y)
                 print(f"height: {arm_z}")
 
@@ -265,6 +265,7 @@ class Main:
                     # Value is in radians [90 degrees]
                     applied_rotation = 1.5708
                 
+                # send the all the commands to the robot for it to pick up the object, place it in the correct bin, and return home
                 self.pick_and_place(arm_x, arm_y, arm_z, applied_rotation, drop_off)
 
                 self.main_loop_helper(requested_item)
@@ -327,6 +328,7 @@ class Main:
     def run_vision_and_sql_task_threads(self):
         """
         runs the vision task thread and sql task thread
+        :return: whether or not the SQL job ran through 
         """
         vision_task_thread = None
         sql_task_thread = None
@@ -358,9 +360,11 @@ class Main:
     def convert_coordinates(self, in_x:float, in_y:float, in_coor:dict, out_coor:dict):
         """
         converts coordinates from the in_coor coordinate system to the out_coor coordinate system
-        in_coor and out_coor are both dictionaries with north, east, south, and west values
-        that correspond to the upper, right, lower, and left bounds of the pickable area
-        returns the x and y values of "selected_item" in terms of 
+        :in_x: the x position of the item, in terms of the old coordinate system
+        :in_y: the y position of the item, in terms of the old coordinate system
+        :in_coor: coordinates that x and y are being converted FROM. A dictionary with north, east, south, and west bounds
+        :out_coor: coordinates that x and y are being converted TO. A dictionary with north, east, south, and west bounds
+        :return: the x and y values of "selected_item" in terms of output coordinate system
         """
         # first, convert the x and y coordinates of the selected item so that they are independent of the input coordinate system
         # mid_x is the x coordinate of the item where 0.0 is the left edge of the pickable area and 1.0 is the right edge of the pickable area
