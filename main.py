@@ -20,39 +20,32 @@ import datetime
 import traceback
 import copy
 import time
+import configparser
 
 from SQL_Driver import ObjectDB
 from Item import Item
 from VisionThread import VisionThread
-from SSH_Thread import SSHThread
 from GUI import GUI
+from ZEDMiniDriver import ZEDMiniDriver
+
+from pyniryo import *
 
 LOG_LEVEL_CMD = logging.WARNING         # The min log level that will be displayed in the console
 LOG_DIR = 'Logs'                        # Directory to save log files to
-LEFT_CAMERA_SERIAL_NUM = '18585124'     # Left stereo camera ID
-RIGHT_CAMERA_SERIAL_NUM = '18585121'    # Right stereo camera ID
+CAMERA_SERIAL_NUM = '18585124'          # stereo camera ID
 GRAPH_TYPE = 'SSD_INCEPTION_V2'         # Network graph model to use for object detection
-INCHES_PER_PIXEL = 0.015735782          # Number of inches each pixel represents at the datum
 IMAGE_DOWNSCALE_RATIO = 0.5             # Downscale ratio for machine learning
-x_shift_const = 0.4
-x_conversion_const = x_shift_const/640.5 #Shift amount/middle pixel value
-x_final_const = 0.980858545
-y_conversion_const = 0.000515
-min_x_val = -0.25
-min_y_val = 0.14
-max_x_val = 0.25
-max_y_val = 0.37
+                                        #    1  = process the full image (more accurate)
+                                        #    <1 = process a smaler version of the image (faster)
 picked_items = []
 
 sorting_coords = {
-    "bird":"DROP -0.014 0.298 0.25 -0.296 1.530 1.346",
-    "cat": "DROP 0.003 -0.152 0.25 -0.050 1.395 -1.571",
-    "dog": "DROP 0.000 -0.257 0.25 0.070 1.410 -1.496",
-    "home": "MOVE 0.077 0.001 0.159 -0.023 1.322 0.017"
+    "bird": [-0.014, 0.298, 0.25, -0.296, 1.530, 1.346],
+    "cat":  [0.003, -0.152, 0.25, -0.050, 1.395, -1.571],
+    "dog":  [0.000, -0.257, 0.25, 0.070, 1.410, -1.496],
+    "home": [0.12, 0.0, 0.15, 0.0, 1.57, 0.0],
 }
 
-                                        #    1  = process the full image (more accurate)
-                                        #    <1 = process a smaler version of the image (faster)
 
 # GUI Message Codes
 GUI_MESSAGES = dict(
@@ -72,6 +65,29 @@ GUI_MESSAGES = dict(
 
 
 class Main:
+
+    # config_variables: all the variables that need to be read from the config file
+    # each "north, east, south west" coordinate system describes the four bounds according to one device, FLIR camera, Niryo arm, or Zed depth sensor
+    config_variables = {
+        'camera_coordinates': {
+            'north': 0.0,
+            'east':  0.0,
+            'south': 0.0,
+            'west':  0.0
+        },
+        'arm_coordinates': {
+            'north': 0.0,
+            'east':  0.0,
+            'south': 0.0,
+            'west':  0.0
+        },
+        'zed_coordinates': {
+            'north': 0.0,
+            'east':  0.0,
+            'south': 0.0,
+            'west':  0.0
+        }
+    }
 
     def __init__(self):
         """
@@ -104,6 +120,9 @@ class Main:
         self._logger.addHandler(console_handler)
         # =====================================================================
 
+        # read data from config file
+        self.parse_config()
+
         # Setup GUI
         self._logger.debug('Initializing GUI Thread')
         self._gui_thread = GUI()
@@ -120,12 +139,15 @@ class Main:
 
         # Setup Vision Thread
         self._logger.debug('Initializing Vision Thread')
-        self._vision_thread = VisionThread(LEFT_CAMERA_SERIAL_NUM, RIGHT_CAMERA_SERIAL_NUM, GRAPH_TYPE, LOG_DIR,
+        self._vision_thread = VisionThread(CAMERA_SERIAL_NUM, GRAPH_TYPE, LOG_DIR,
                                            IMAGE_DOWNSCALE_RATIO)
-
-        # Setup SSH
-        self._ssh_thread = SSHThread.SSHThread()
-
+        # start TCP connection
+        self.robot = NiryoRobot("10.10.10.10")
+        self.robot.calibrate_auto()
+        
+        # Initialize ZED Mini Driver
+        self._logger.debug("Initializing ZED Mini Driver")
+        self._zed_driver = ZEDMiniDriver()
 
         # Setup local variables
         self._camera_result = None
@@ -153,199 +175,100 @@ class Main:
             self._logger.debug('Starting Vision Thread')
             self._vision_thread.start()
 
-            self._logger.debug('Starting SSH Thread')
-            self._ssh_thread.start()
-            self._ssh_thread._append_command(sorting_coords['home'])
-            self._ssh_thread._append_command("OPEN")
-            self._ssh_thread._append_command("CLOSE")
+            self._logger.debug('Homing Arm')
+            self.robot.move_pose(sorting_coords["home"])
 
             while self._gui_thread.is_alive():      # Keep going until the GUI thread dies
-                vision_task_thread = None
-                sql_task_thread = None
+                # NOTE currently the GUI thread does not die when the GUI is closed, instead the GUI thread reopens the window
+                
+                # create and run the two task threads to retrieve the vision and machine learning results
+                # if the task threads are successfully run, then the rest of the main loop will execute
                 try:
-                    vision_task_thread = threading.Thread(target=self._call_vision_thread())
-                    vision_task_thread.start()
-
-                    print("Test")
-
-                    # If a SQL job is being processed don't start another one
-                    if not self._processing_job.is_set():
-                        sql_task_thread = threading.Thread(target=self._call_sql_thread())
-                        sql_task_thread.start()
-
+                    sql_task_thread_is_still_running = self.run_vision_and_sql_task_threads()
+                    if sql_task_thread_is_still_running:
+                        continue # if the SQL task thread hasn't completed yet, then the rest of the main loop will not execute
                 except Exception as e:
-                    # on an error join the task threads
-                    if vision_task_thread is not None:
-                        vision_task_thread.join()
+                    raise Exception(e) # if the task threads throw an error, the program will quit
 
-                    if sql_task_thread is not None:
-                        sql_task_thread.join()
+                # retrieve the result of the machine learning query
+                # If a SQL job is being processed then continue to processes that job
+                lest_requested_item = self._sql_result[0]
+                msgs = self._process_sql_job()              # Get messages from the processing
+                # Log all messages to the GUI
+                for msg in msgs:
+                    text = list(GUI_MESSAGES.keys())[list(GUI_MESSAGES.values()).index(msg[0])]
+                    text = "%s : %s" % (text, msg[1].item_type)
+                    self._gui_thread.add_msg_to_log(text)
 
-                    raise Exception(e)
+                size = (0, 0)
+                with self._camera_result_lock:
+                    if self._camera_result is not None:
+                        image_0 = self._camera_result[0]
+                        size = image_0.shape
+
+                # Get the X, Y coords of the object
+                requested_item = self._sql_result[0]
+
+                # if there is no current item to pick up, then go back to the start of the main loop
+                if (not self.get_current_item_list): #Modified with continue
+                    self.main_loop_helper(requested_item)
+                    continue
+
+                # retrieve the item to be picked up, and store it in selected_item
+                selected_item = None # the item to be picked up, as identified by the machine learning thread
+                # Choose first existing item that has not been picked
+                for next_item in self.get_current_item_list():
+                    if (next_item.item_type not in (picked_items)):
+                        selected_item = next_item
+                        picked_items.append(next_item.item_type)
+                        break
+                # sanity check, if no item was identified then go back to the start of the main loop
+                if (selected_item is None): #Modified with continue
+                    print("No Objects Identified")
+                    self.main_loop_helper(requested_item)
+                    continue
+
+                # Translate the coordinates of the selected_item to the coordinate system that the arm uses
+                arm_x, arm_y = self.convert_coordinates(selected_item.x, selected_item.y,
+                    self.config_variables['camera_coordinates'],
+                    self.config_variables['arm_coordinates'])
+                
+                # get the coordinates of the drop off location for the identified object
+                drop_off = "" # a list of the coordinates of the drop off location that can be sent to the robot
+                if ('bird' in selected_item.item_type.lower()):
+                    drop_off = sorting_coords['bird']
+                elif ('dog' in selected_item.item_type.lower()):
+                    drop_off = sorting_coords['dog']
+                elif ('cat' in selected_item.item_type.lower()):
+                    drop_off = sorting_coords['cat']
                 else:
-                    # Join Task Threads
-                    if vision_task_thread is not None:
-                        vision_task_thread.join()
+                    print("Object was not able to be identified..... Going Home")
+                    drop_off = sorting_coords['home']
 
-                    if sql_task_thread is not None:
-                        sql_task_thread.join()
-                        self._processing_job.set()
-                    else:
-                        # If a SQL job is being processed then continue to processes that job
-                        lest_requested_item = self._sql_result[0]
-                        msgs = self._process_sql_job()              # Get messages from the processing
+                print("Appending instructions for {} X={} Y={}".format(selected_item.item_type, selected_item.x, selected_item.y))
+                print("Translated Coordinates: Arm_x: {} Arm_y: {}".format(arm_x, arm_y))
 
-                        # Log all messages to the GUI
-                        for msg in msgs:
-                            text = list(GUI_MESSAGES.keys())[list(GUI_MESSAGES.values()).index(msg[0])]
-                            text = "%s : %s" % (text, msg[1].item_type)
-                            self._gui_thread.add_msg_to_log(text)
+                # find the depth (z value) of the object
+                # translate the position of the object to the coordinate system of the Zed Mini
+                zed_x, zed_y = self.convert_coordinates(selected_item.x, selected_item.y,
+                    self.config_variables['camera_coordinates'],
+                    self.config_variables['zed_coordinates'])
+                print(f"zed x, y : {zed_x}, {zed_y}")
+                # retrieve the height from the height map at the position of the object
+                arm_z = self._zed_driver.get_object_height(zed_x, zed_y)
+                print(f"height: {arm_z}")
 
-                        size = (0, 0)
-                        with self._camera_result_lock:
-                            if self._camera_result is not None:
-                                image_0 = self._camera_result[0]
-                                size = image_0.shape
+                # The rotation of the end effector of the robot arm, will be either vertical or horizontal
+                applied_rotation = 0
+                # If length of detection box is larger than height
+                if (selected_item.rot):
+                    # Value is in radians [90 degrees]
+                    applied_rotation = 1.5708
+                
+                # send the all the commands to the robot for it to pick up the object, place it in the correct bin, and return home
+                self.pick_and_place(arm_x, arm_y, arm_z, applied_rotation, drop_off)
 
-                        # Get the X, Y, Z coords of the object
-                        requested_item = self._sql_result[0]
-                        x = "N/A"
-                        y = "N/A"
-                        z = "N/A"
-
-                        with self._current_item_list_lock:
-                            for item in self._current_item_list:
-                                if item.item_type == requested_item.item_type:
-                                    x = "%0.4f in" % (item.x * size[1] * INCHES_PER_PIXEL)
-                                    y = "%0.4f in" % (item.y * size[0] * INCHES_PER_PIXEL)
-                                    z = "%0.4f in" % item.z
-                                    print("x = %s, y = %s, z = %s" % (x, y, z))
-                                    break
-
-
-                        # Get the image coordinates
-                        item_x = self._vision_thread._get_x()
-                        x = item_x
-                        item_y = self._vision_thread._get_y()
-                        y = item_y
-                        z = 0
-                        print("Tried to get image coordinates")
-
-                        print("Item-X: {}, Item-Y: {}".format(item_x, item_y))
-
-                        # If recognized items are not empty
-                        if (self.get_current_item_list):
-
-                            selected_item = None
-
-                            # Choose first existing item that has not been picked
-                            for next_item in self.get_current_item_list():
-                                if (next_item.item_type not in (picked_items)):
-                                    selected_item = next_item
-                                    picked_items.append(next_item.item_type)
-                                    break
-
-                            # Prep to create command
-                            if (selected_item is not None):
-                                # Translate to arm coordinates
-                                arm_x = float((selected_item.x * x_conversion_const - x_shift_const) * x_final_const)
-                                arm_y = float(selected_item.y * y_conversion_const)
-                                drop_off = ""
-
-
-                                if ('bird' in selected_item.item_type.lower()):
-                                    drop_off = sorting_coords['bird']
-
-                                elif ('dog' in selected_item.item_type.lower()):
-                                    drop_off = sorting_coords['dog']
-
-                                elif ('cat' in selected_item.item_type.lower()):
-                                    drop_off = sorting_coords['cat']
-
-                                else:
-                                    print("Object was not able to be identified..... Going Home")
-                                    drop_off = sorting_coords['home']
-
-
-
-                                print("Appending instructions for {} X={} Y={}".format(selected_item.item_type, selected_item.y, selected_item.x))
-                                
-                                print("Translated Coordinates: Arm_x: {} Arm_y: {}".format(arm_x, arm_y))
-                                # Check if in bounds
-                                if ((arm_x >= min_x_val and arm_x <= max_x_val) and (arm_y >= min_y_val and arm_y <= max_y_val)):
-                                
-                                    # Default rotation
-                                    applied_rotation = 0
-
-                                    # If length of detection box is larger than height
-                                    if (selected_item.rot):
-                                        # Value is in radians [90 degrees]
-                                        applied_rotation = 1.5708
-
-                                    # MOVE ABOVE THEN PICK X Y Z ROLL PITCH YAW
-                                    # Arm flips x and y
-                                    self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.1 + .18, applied_rotation, 1.4, 0))
-                                    self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0.1, applied_rotation, 1.4, 0))
-
-                                    # SHIFT AXIS AMOUNT
-                                    # Move out of the way
-                                    self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.35, applied_rotation, 1.4, 0))
-
-                                    # DROP OFF POINT
-                                    self._ssh_thread._append_command(drop_off)
-
-                                    # Move Home if drop_off not at Home
-                                    if (drop_off != sorting_coords['home']):
-                                        self._ssh_thread._append_command(sorting_coords['home'])
-
-                                else:
-                                    print("Error appending instructions... Out of Bounds")
-
-                            else:
-                                print("No Objects Identified")
-
-
-                        """
-                        if ((item_x is not None) and (item_y is not None)):
-                            # Translate to arm coordinates
-                            arm_x = float((item_x * x_conversion_const - x_shift_const) * x_final_const)
-                            arm_y = float(item_y * y_conversion_const)
-                            # PICK X Y Z ROLL PITCH YAW
-                            # Arm flips x and y
-                            self._ssh_thread._append_command("PICK {} {} {} {} {} {}".format(arm_y, arm_x, 0.1, 0, 1.4, 0))
-
-                            # SHIFT AXIS AMOUNT
-                            # Move out of the way
-                            self._ssh_thread._append_command("MOVE {} {} {} {} {} {}".format(arm_y, arm_x, 0.1 + .15, 0, 1.4, 0))
-
-                            # DROP OFF POINT
-                            self._ssh_thread._append_command("DROP {} {} {} {} {} {}".format(.007, 0.231, 0.340, 0.066, 1.284, 1.687))
-                        """
-
-                        """
-                        print("-----Printing Item List-----")
-                        for testItem in self.get_current_item_list():
-                            print(testItem.item_type)
-
-                        print("-----End of Item List-----")
-                        """
-
-                        message = 'Requesting Object: %s' % requested_item.item_type
-
-                        # Update GUI based on results
-                        if self._object_removed_successfully:
-                            self._gui_thread.set_result(1, error=message, item=lest_requested_item.item_type,
-                                                        placement=lest_requested_item.placement, x=x, y=y, z=z)
-                        elif self._object_not_found:
-                            self._gui_thread.set_result(0, error="Object Not Found!", item=requested_item.item_type,
-                                                        placement=requested_item.placement, x="N/A", y="N/A", z="N/A")
-                        else:
-                            self._gui_thread.set_result(2, error=message, item=requested_item.item_type,
-                                                        placement=requested_item.placement, x=x, y=y, z=z)
-
-                        time.sleep(5)
-                        self._object_removed_successfully = False
-                        self._object_not_found = False
+                self.main_loop_helper(requested_item)
 
         except Exception:
             tb = traceback.format_exc()
@@ -362,6 +285,135 @@ class Main:
             self._logger.debug('Joining Vision Thread')
             self._vision_thread.join()
             self._gui_thread.join()
+            
+            # terminate robot connection
+            self.robot.close_connection()
+
+    def parse_config(self):
+        """
+        Helper function to get data from the config file.
+        """
+        bad_read = False
+        self._logger.debug('parsing config file...')
+        config = configparser.ConfigParser()
+        config.read('.config')
+        # for each key to a subdictionary in the config_variables dictionary...
+        for section_name in list(self.config_variables):
+            # check if the subdictionary is found in the config file
+            if section_name not in config.sections():
+                bad_read = True
+                print("Error! section " + section_name + " not found in config file, adding it")
+                # create an instance of the section in the config file for the user to fill out
+                config[section_name] = {}
+                for variable_name in list(self.config_variables[section_name]):
+                    config[section_name][str(variable_name)] = str(self.config_variables[section_name][variable_name])
+                config_file = open('.config', 'w')
+                config.write(config_file)
+
+            # for each key in the subdictionary...
+            for variable_name in list(self.config_variables[section_name]):
+                # retrieve the value from the subdictionary
+                self.config_variables[section_name][variable_name] = config.getfloat(section_name, variable_name)
+                # if the value is 0.0, then report error
+                if self.config_variables[section_name][variable_name] == 0.0:
+                    print(variable_name + ' in .config is undefined, please add value in .config file')
+                    bad_read = True
+
+        if bad_read == True:
+            self._logger.debug('parsing config file - FAILURE, quitting')
+            quit()
+        self._logger.debug('parsing config file - COMPLETE')
+        return
+    
+    def run_vision_and_sql_task_threads(self):
+        """
+        runs the vision task thread and sql task thread
+        :return: whether or not the SQL job ran through 
+        """
+        vision_task_thread = None
+        sql_task_thread = None
+        try:
+            vision_task_thread = threading.Thread(target=self._call_vision_thread())
+            vision_task_thread.start()
+            # If a SQL job is being processed don't start another one
+            if not self._processing_job.is_set():
+                sql_task_thread = threading.Thread(target=self._call_sql_thread())
+                sql_task_thread.start()
+        except Exception as e:
+            # on an error join the task threads
+            if vision_task_thread is not None:
+                vision_task_thread.join()
+            if sql_task_thread is not None:
+                sql_task_thread.join()
+            raise Exception(e)
+        else:
+            # Join Task Threads
+            if vision_task_thread is not None:
+                vision_task_thread.join()
+            if sql_task_thread is not None:
+                sql_task_thread.join()
+                self._processing_job.set()
+                return True
+            else:
+                return False
+
+    def convert_coordinates(self, in_x:float, in_y:float, in_coor:dict, out_coor:dict):
+        """
+        converts coordinates from the in_coor coordinate system to the out_coor coordinate system
+        :in_x: the x position of the item, in terms of the old coordinate system
+        :in_y: the y position of the item, in terms of the old coordinate system
+        :in_coor: coordinates that x and y are being converted FROM. A dictionary with north, east, south, and west bounds
+        :out_coor: coordinates that x and y are being converted TO. A dictionary with north, east, south, and west bounds
+        :return: the x and y values of "selected_item" in terms of output coordinate system
+        """
+        # first, convert the x and y coordinates of the selected item so that they are independent of the input coordinate system
+        # mid_x is the x coordinate of the item where 0.0 is the left edge of the pickable area and 1.0 is the right edge of the pickable area
+        # mid_y is the y coordinate of the item where 0.0 is the top edge of the pickable area and 1.0 is the bottom edge of the pickable area
+        mid_x = (in_x - in_coor['west'])  / (in_coor['east'] - in_coor['west'])
+        mid_y = (in_y - in_coor['north']) / (in_coor['south'] - in_coor['north'])
+        # out_x and out_y are the coordinates in terms of the output coordinate system
+        out_x = mid_x * abs(out_coor['east'] - out_coor['west']) + out_coor['west']
+        out_y = mid_y * abs(out_coor['south'] - out_coor['north']) + out_coor['north']
+        return out_x, out_y
+
+    def pick_and_place(self, arm_x:float, arm_y:float, arm_z:float, applied_rotation:float, drop_off):
+        """
+        sends all the commands to the robot to move it to the correct location, pick up the item, and drop it off at the correct location
+        :arm_x: the x coordinate of the object that needs to be picked up, in terms of the coordinate system of the robot
+        :arm_y: the y coordinate of the object that needs to be picked up, in terms of the coordinate system of the robot
+        :arm_z: the z coordinate of the object that needs to be picked up, in terms of the coordinate system of the robot
+        :applied_rotation: the rotation of the robot end effector, in radians. It will either be horizontal (0.0) or vertical (1.5708)
+        :drop_off: a list of the coordinate that the picked item needs to be dropped off at. It will be one of the values of the sorting_coordinates dictionary
+        """
+
+        vertical_offset = 0.2 # the amount that the arm will 'hover' over the selected item
+
+        # NOTE The coordinate values given to the robot are X Y Z ROLL PITCH YAW
+        # NOTE The arm flips x and y
+
+        # check if the object is within the bounds of the pickable area
+        if (not (arm_x >= self.config_variables['arm_coordinates']['west']
+                and arm_x <= self.config_variables['arm_coordinates']['east']
+                    and arm_y >= self.config_variables['arm_coordinates']['north']
+                        and arm_y <= self.config_variables['arm_coordinates']['south'])):
+            print("Error appending instructions... Out of Bounds")
+            # TODO self.main_loop_helper(requested_item)
+            return
+
+        # Move above the selected object
+        self.robot.move_pose(arm_y, arm_x, arm_z + vertical_offset, applied_rotation, 1.4, 0)
+        self.robot.release_with_tool()
+        # grab the selected object
+        self.robot.move_pose(arm_y, arm_x, arm_z, applied_rotation, 1.4, 0)
+        self.robot.grasp_with_tool()
+        # Move the robot back up above the pickable area
+        self.robot.move_pose(arm_y, arm_x, arm_z + vertical_offset, applied_rotation, 1.4, 0)
+        # Move to the drop off point and release the item
+        self.robot.move_pose(drop_off)
+        self.robot.release_with_tool()
+        self.robot.grasp_with_tool()
+        # Move Home
+        self.robot.move_pose(sorting_coords["home"])
 
     def get_camera_images(self):
         """
@@ -408,7 +460,7 @@ class Main:
         """
         Task thread method to call request updated info from the vision thread
         """
-        images = self._vision_thread.get_images()
+        images = self._vision_thread.retrieve_images()
         items = self._vision_thread.get_items()
 
         with self._camera_result_lock:
@@ -498,6 +550,15 @@ class Main:
                 self._sql_result.remove(self._sql_result[0])
             self._object_removed_successfully = True
         return msg
+
+    def main_loop_helper(self, requested_item):
+        """
+        Helper function for some repeated end of loop code.
+        """
+        message = 'Requesting Object: %s' % requested_item.item_type
+        time.sleep(5)
+        self._object_removed_successfully = False
+        self._object_not_found = False
 
 
 if __name__ == '__main__':

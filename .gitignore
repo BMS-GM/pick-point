@@ -1,6 +1,9 @@
 # ignore all logs
 *.log
 
+# ignore the config file
+.config
+
 # ignore image captures
 images/capture/mono_captures/
 images/capture/stereo_captures/

@@ -22,13 +22,12 @@ import os
 
 from NeuralNetwork import NeuralNetwork as neuralNet
 
-# Base directories off relative paths os.getcwd() returns when main.py is ran from
-# ie. pick-point folder
-GRAPHS = dict(FASTER_RCNN_RESNET= os.getcwd() + "\\NeuralNetwork\\faster_rcnn_resnet101_coco\\frozen_inference_graph.pb",
-              SSD_INCEPTION_V2= os.getcwd() + "\\NeuralNetwork\\ssd_inception_v2_coco\\frozen_inference_graph.pb")
-
 
 class MachineLearningThread(threading.Thread):
+    
+    # Base directories off relative paths os.getcwd() returns when main.py is ran from
+    # ie. pick-point folder
+    GRAPHS:dict
 
     def __init__(self, log_dir, graph_type="FASTER_RCNN_RESNET"):
         """
@@ -36,6 +35,9 @@ class MachineLearningThread(threading.Thread):
         :param log_dir: director to place log files in
         :param graph_type: The type of graph to run
         """
+        
+        GRAPHS = dict(FASTER_RCNN_RESNET= os.getcwd() + "\\NeuralNetwork\\faster_rcnn_resnet101_coco\\frozen_inference_graph.pb",
+                        SSD_INCEPTION_V2= os.getcwd() + "\\NeuralNetwork\\ssd_inception_v2_coco\\frozen_inference_graph.pb")
 
         # Setup Threading
         super(MachineLearningThread, self).__init__()       # Initialize Thread
