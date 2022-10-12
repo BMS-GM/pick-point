@@ -25,6 +25,9 @@ class ZEDMiniDriver:
 
         # Create a 'Mat' to store the depth information later
         self._depth_map = sl.Mat()
+        # Create another Mat for depth map printouts
+        self._depth_image = sl.Mat()
+        self._num_captures = 0
         self._run_params = sl.RuntimeParameters()
 
         # Open the zed mini
@@ -36,6 +39,13 @@ class ZEDMiniDriver:
                 print(repr(status))
                 exit()
             print("  Success")
+
+        # debug -- print the depth of the middle of the picture. If the 
+        # workfield is empty, that's the depth of the desk
+        if self._zed_mini.grab(self._run_params) == sl.ERROR_CODE.SUCCESS:
+            self._zed_mini.retrieve_measure(self._depth_map, sl.MEASURE.DEPTH)
+            DESK_DEPTH = self._depth_map.get_value(1280/2, 720/2)[1] / 1000
+            print(f"starting desk depth: {DESK_DEPTH}")
 
     def get_object_height(self, x: float, y: float) -> float:
         """Collects the height of an object in the picking area"""
@@ -49,5 +59,10 @@ class ZEDMiniDriver:
             object_depth = self._depth_map.get_value(x, y)[1] / 1000
 
         print(f"object depth: {object_depth}")
+
+        # debug -- save a grayscale copy of the depthmap
+        self._zed_mini.retrieve_image(self._depth_image, sl.VIEW.DEPTH)
+        self._depth_image.write("images/depth_map/" + str(self._num_captures) + ".png")
+        self._num_captures = self._num_captures + 1
 
         return ARM_OFFSET + (DESK_DEPTH - object_depth)
