@@ -237,12 +237,13 @@ class Main:
 
                         selected_item = None
                         
-
-                        # Choose first existing item that has not been picked
+                        
+                        # Choose first existing item 
                         for next_item in self.get_current_item_list():
-                            if (next_item.item_type not in (picked_items)):
+
                                 selected_item = next_item
                                 picked_items.append(next_item.item_type)
+
                                 break
 
                         # Prep to create command
@@ -290,6 +291,8 @@ class Main:
                         zed_x, zed_y = self.convert_coordinates(selected_item.x, selected_item.y,
                             self.config_variables['camera_coordinates'],
                             self.config_variables['zed_coordinates'])
+                        # TEMPORARY:: y value is consistenly a little low, so subtract to move it up a little bit
+                        zed_y -= 4
                         print(f"zed x, y : {zed_x}, {zed_y}")
                         arm_z = self._zed_driver.get_object_height(zed_x, zed_y)
                         print(f"height: {arm_z}")
@@ -397,8 +400,8 @@ class Main:
         mid_x = (in_x - in_coor['west'])  / (in_coor['east'] - in_coor['west'])
         mid_y = (in_y - in_coor['north']) / (in_coor['south'] - in_coor['north'])
         # out_x and out_y are the coordinates in terms of the output coordinate system
-        out_x = mid_x * abs(out_coor['east'] - out_coor['west']) + out_coor['west']
-        out_y = mid_y * abs(out_coor['south'] - out_coor['north']) + out_coor['north']
+        out_x = mid_x * (out_coor['east'] - out_coor['west']) + out_coor['west']
+        out_y = mid_y * (out_coor['south'] - out_coor['north']) + out_coor['north']
         return out_x, out_y
 
     def get_camera_images(self):

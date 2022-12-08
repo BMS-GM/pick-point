@@ -1,7 +1,7 @@
 import sl
 
 # Constants in meters
-DESK_DEPTH = 0.84  # Desk depth from sensor
+DESK_DEPTH = 0.83  # Desk depth from sensor
 ARM_OFFSET = 0.1  # Arm offset for correct picking
 SHIFT_AMNT = 0.4  # Arm shift amount for returning
 
@@ -44,8 +44,13 @@ class ZEDMiniDriver:
         # workfield is empty, that's the depth of the desk
         if self._zed_mini.grab(self._run_params) == sl.ERROR_CODE.SUCCESS:
             self._zed_mini.retrieve_measure(self._depth_map, sl.MEASURE.DEPTH)
-            DESK_DEPTH = self._depth_map.get_value(1280/2, 720/2)[1] / 1000
+            #DESK_DEPTH = self._depth_map.get_value(1280/2, 720/2)[1] / 1000
             print(f"starting desk depth: {DESK_DEPTH}")
+            self._zed_mini.retrieve_image(self._depth_image, sl.VIEW.DEPTH)
+            for i in range(int((1280/2)-2),int((1280/2)+3)):
+                for j in range(int((720/2)-2), int((720/2)+3)):
+                    self._depth_image.set_value(i, j, [0, 0, 0, 0, 0])
+            self._depth_image.write("images/depth_map/init.png")
 
     def get_object_height(self, x: float, y: float) -> float:
         """Collects the height of an object in the picking area"""
@@ -62,6 +67,11 @@ class ZEDMiniDriver:
 
         # debug -- save a grayscale copy of the depthmap
         self._zed_mini.retrieve_image(self._depth_image, sl.VIEW.DEPTH)
+        # add a dot on the map where the zed mini just polled the depth of
+        for i in range(int(x-2),int(x+3)):
+            for j in range(int(y-2), int(y+3)):
+                self._depth_image.set_value(i, j, [0, 0, 0, 0, 0])
+        
         self._depth_image.write("images/depth_map/" + str(self._num_captures) + ".png")
         self._num_captures = self._num_captures + 1
 
